@@ -6,7 +6,8 @@ import traceback
 import os
 from time import sleep
 
-def main(bright_method = 'auto'):
+
+def main(bright_method='auto'):
     count = 1
     script = io.Setup()
     folder = script.rootdir
@@ -22,7 +23,7 @@ def main(bright_method = 'auto'):
                     print(subdir)
                     movie = io.Movie(file[:-4], f'{subdir}/{file}')
                     if bright_method == 'manual':
-                        cut.Brightness.manual(movie, movie.df, display = False)
+                        cut.Brightness.manual(movie, movie.df, display=False)
                     if bright_method == 'auto':
                         cut.Brightness.auto(movie, movie.df)
                     cut.Diffusion.displacement(movie, movie.df)
@@ -31,11 +32,11 @@ def main(bright_method = 'auto'):
                     MSD = k.MSD()
                     cf.FitFunctions.linear(movie, movie.mean_SDs,
                                            'Step Length', 'MSD', MSD)
-                    cf.OneCompExpDecay(movie, BSL, display = False)
-                    cf.TwoCompExpDecay(movie, BSL, display = False)
-                    cf.Alt_TwoCompExpDecay(movie, BSL, display = False)
-                    cf.ExpLinDecay(movie, BSL, display = False)
-                    cf.TwoCompRayleigh(movie, Ray, display = False)
+                    cf.OneCompExpDecay(movie, BSL, display=False)
+                    cf.TwoCompExpDecay(movie, BSL, display=False)
+                    cf.Alt_TwoCompExpDecay(movie, BSL, display=False)
+                    cf.ExpLinDecay(movie, BSL, display=False)
+                    cf.TwoCompRayleigh(movie, Ray, display=False)
                     if count == 1:
                         todays_movies = io.Exports(
                             outfile, movie.exportdata, folder)
@@ -43,13 +44,15 @@ def main(bright_method = 'auto'):
                     todays_movies.build_df(movie.exportdata)
                     print(todays_movies.export_df)
     except Exception as e:
-        print('Error', traceback.print_exc(e), 'quitting program in 3 seconds.', sep='\n')
+        print('Error', traceback.print_exc(e),
+              'quitting program in 3 seconds.', sep='\n')
         sleep(3)
         quit()
     raw_excel = todays_movies.xlsx_export(todays_movies.export_df, folder)
     todays_movies.xlsx_sheet()
     if raw_excel:
         print('Export successful', end='\n'*2)
+
 
 if __name__ == '__main__':
     main()
