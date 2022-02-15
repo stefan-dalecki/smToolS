@@ -764,7 +764,7 @@ class FitFunctions:
             none
 
         """
-        
+
         x_data = df[x_col].values
         y_data = df[y_col].values
         slope, intercept, r2, p, se = stats.linregress(x_data, y_data)
