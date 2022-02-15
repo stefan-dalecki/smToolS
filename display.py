@@ -3,9 +3,10 @@ import numpy as np
 import formulas as f
 import curvefitting as cf
 
+
 class Histogram:
     def basic(list, bins,
-                  title=None, x_label=None, y_label=None):
+              title=None, x_label=None, y_label=None):
         plt.hist(list, bins, range=[0, 7])
         plt.title(title)
         plt.xlabel(x_label)
@@ -15,7 +16,7 @@ class Histogram:
         plt.show(block=True)
 
     def lines(list, bins, low_cut, high_cut,
-                        title=None, x_label=None, y_label=None):
+              title=None, x_label=None, y_label=None):
         n, bins, patches = plt.hist(list, bins, range=[0, 7])
         plt.title(title)
         plt.xlabel(x_label)
@@ -25,6 +26,7 @@ class Histogram:
         plt.vlines(high_cut, 0, n.max(), color='red')
         plt.tight_layout()
         plt.show(block=True)
+
 
 class Scatter:
     def scatter(df,
@@ -39,9 +41,10 @@ class Scatter:
         plt.tight_layout()
         plt.show()
 
+
 class ExpDecay:
     def onecomp(movie, df, equation, tau1, cov1, r2, kinetic,
-                        title=None, x_label=None, y_label=None):
+                title=None, x_label=None, y_label=None):
         x_data = df.iloc[:, 0].values
         y_data = df.iloc[:, 1].values
         val1 = np.round(tau1*movie.framestep_size, 3)
@@ -53,15 +56,15 @@ class ExpDecay:
         plt.ylabel(y_label)
         plt.title(title + '\n--- One Comp Exp Decay ---')
         plt.plot(x_data, equation(x_data, tau1),
-                 'r--', label=f'{kinetic.name}: {val1} {kinetic.unit}\n' +
-                 f' Cov: {var1}\n' +
-                 f'R\u00b2: {r_val}')
+                 'r--', label=f'{kinetic.name}: {val1} {kinetic.unit}\n'
+                 + f' Cov: {var1}\n'
+                 + f'R\u00b2: {r_val}')
         plt.legend(loc='upper right')
         plt.tight_layout()
         plt.show()
 
     def twocomp(movie, df, a, tau1, cov1, tau2, cov2, r2, kinetic,
-                        title=None, x_label=None, y_label=None):
+                title=None, x_label=None, y_label=None):
         x_data = df.iloc[:, 0].values
         y_data = df.iloc[:, 1].values
         a1 = round(a, 3)*100
@@ -78,19 +81,19 @@ class ExpDecay:
         plt.title(movie.fig_title + '\n --- Two Comp Exp Decay ---')
         plt.plot(x_data, cf.TwoCompExpDecay.equation(
             x_data, a, tau1, tau2), 'r--',
-            label=f'Maj Frac: {a1}\n' +
-                    f' {kinetic.name}: {val1} {kinetic.unit}\n' +
-                    f' Cov {var1}\n' +
-                    f'Min Frac: {a2}\n' +
-                    f' {kinetic.name}: {val2} {kinetic.unit}\n' +
-                    f' Cov: {var2}\n' +
-                    f'R\u00b2: {r_val}')
+            label=f'Maj Frac: {a1}\n'
+            + f' {kinetic.name}: {val1} {kinetic.unit}\n'
+            + f' Cov {var1}\n'
+            + f'Min Frac: {a2}\n'
+            + f' {kinetic.name}: {val2} {kinetic.unit}\n'
+            + f' Cov: {var2}\n'
+            + f'R\u00b2: {r_val}')
         plt.legend(loc='upper right')
         plt.tight_layout()
         plt.show()
 
     def explin(movie, df, tau1, cov1, b, cov2, r2, kinetic,
-                    title=None, x_label=None, y_label=None, legend=None):
+               title=None, x_label=None, y_label=None, legend=None):
         x_data = df.iloc[:, 0].values
         y_data = df.iloc[:, 1].values
         val1 = round(tau1*movie.framestep_size, 4)
@@ -106,11 +109,11 @@ class ExpDecay:
         plt.title(title + '\n --- Exp and Lin Decay ---')
         plt.plot(x_data, cf.ExpLinDecay.equation(
             x_data, tau1, b), 'r--',
-            label=f'Exp {kinetic.name}: {val1} {kinetic.unit}\n' +
-            f' Exp Cov:{var1}\n' +
-            f'Lin {kinetic.name}: {val2} frames\n' +
-            f' Lin Cov: {var2}\n' +
-            f'R\u00b2: {r_val}')
+            label=f'Exp {kinetic.name}: {val1} {kinetic.unit}\n'
+            + f' Exp Cov:{var1}\n'
+            + f'Lin {kinetic.name}: {val2} frames\n'
+            + f' Lin Cov: {var2}\n'
+            + f'R\u00b2: {r_val}')
         plt.legend(loc='upper right')
         plt.tight_layout()
         plt.show()
