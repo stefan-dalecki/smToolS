@@ -8,6 +8,22 @@ from time import sleep
 
 
 def main(bright_method='auto'):
+    """
+    Main function for analyzing movies
+
+    Central hub function that anaylyzes all movies in folder
+
+    Args:
+        bright_method (string): set method for brightness cutoff determination
+
+    Returns:
+        output file
+
+    Raises:
+        Exception: quit program
+
+    """
+
     count = 1
     script = io.Setup()
     folder = script.rootdir
