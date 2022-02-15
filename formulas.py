@@ -9,6 +9,7 @@ class Calc:
     offered are commonly used shortcut functions
 
     """
+    
     def traj_count(df):
         """
         Count trajectories in a dataframe
