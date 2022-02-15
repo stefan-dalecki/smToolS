@@ -5,14 +5,23 @@ import numpy as np
 
 
 class BSL:
+    """
+    Bound state lifetime
+
+    The time a molecule spends on the membrane
+
+    """
+
     def __init__(self, movie, display=False):
         """
-        Bound State Lifetime
+        BSL key features
 
-        The time a molecule spends on the membrane
+        attributes for later processing
 
         Args:
             self
+            movie: movie class object
+            display (bool): choice of whether to display figures
 
         Returns:
             name (string): kinetic name
@@ -37,6 +46,7 @@ class BSL:
 
         Args:
             self: movie class variable
+            df (df): dataframe to generate BSL df
             display: choose to display a scatter plot of the dataframe
 
         Returns:
@@ -69,7 +79,7 @@ class BSL:
                 break
         if display:
             d.Scatter.scatter(numpertracklen, 'Bound State',
-                              'Frames', 'Population Remaining', 
+                              'Frames', 'Population Remaining',
                               movie.fig_title)
         # numpertracklen.to_csv(
         #     r'E:\PhD\Data\Stefan\Best_GRP1\sample_BSL.csv', index=False)
@@ -77,11 +87,18 @@ class BSL:
 
 
 class MSD:
+    """
+    Mean Square Displacement
+
+    diffusion of a membrane bound monomer
+
+    """
+
     def __init__(self):
         """
-        Mean Square Displacement
+        MSD key features
 
-        diffusion of a membrane bound monomer
+        establish key metadata pieces
 
         Args:
             self
@@ -102,14 +119,23 @@ class MSD:
 
 
 class RayD:
+    """
+    Rayleigh probability distribution of diffusion
+
+    Calculate molecule diffusion of homogenous and heterogeneous solutions
+
+    """
+
     def __init__(self, movie, list, display=False):
         """
-        Rayleigh probability distribution of diffusion
+        Rayleigh metrics
 
-        Calculate molecule diffusion of heterogeneous solutions
+        set Rayleigh kinetic metadata
 
         Args:
             self
+            movie: movie class objects
+            list (list): data to generate Rayleigh df
 
         Returns:
             type: description
@@ -126,6 +152,24 @@ class RayD:
         movie.raydf = RayD.format(movie, list, display)
 
     def format(movie, list, display):
+        """
+        Dataframe for Rayleigh diffusion calculations
+
+        Bin data into sizes necessary for rayleigh PDF overlays
+
+        Args:
+            movie: movie class objects
+            list (list): one step diffusion coefficient values
+            display (bool): choice to display the figure
+
+        Returns:
+            type: description
+
+        Raises:
+            Exception: description
+
+        """
+
         bins = np.linspace(1/604800, 169/604800, 85)
         correct = [i+(1/604800) for i in bins][:-1]
         df = pd.DataFrame(list, columns=['values'])
