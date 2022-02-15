@@ -132,4 +132,4 @@ class Diffusion:
             f'\nFinal Trajectory Count : {f.Calc.traj_count(movie.df)}')
         movie.exportdata.update({'Events': len(movie.df)})
         movie.exportdata.update(
-            {'Trajectories': f.Calc.traj_count(movie.df)})
+            {'Traj': f.Calc.traj_count(movie.df)})
