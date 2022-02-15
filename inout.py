@@ -5,6 +5,13 @@ import formulas as f
 
 
 class Setup:
+    """
+    Initial program setup
+
+    Establish a root directory and save file name
+
+    """
+
     def __init__(self):
         """
         Setup info for later export
@@ -33,7 +40,32 @@ class Setup:
 
 
 class Movie:
+    """
+    Movie object class
+
+    Extract and establish data from image stack (movie) file
+
+    """
+
     def __init__(self, name, file, frame_cutoff=15):
+        """
+        Establish movie file parameters
+
+        Define metadata related to movie and camera
+
+        Args:
+            name (string): name of movies
+            file (string): rootdir location
+            frame_cutoff (int): minimum frames for various analyses
+
+        Returns:
+            object metadata attributes
+
+        Raises:
+            none
+
+        """
+
         self.name = {'Name': name}
         self.date = f.Find.identifiers(
             file, '/', 'Date Acquired', ['ymd'])
@@ -57,6 +89,13 @@ class Movie:
 
 
 class Exports:
+    """
+    Export data
+
+    Save and ammend exported data
+
+    """
+
     def __init__(self, name, exportdata, rootdir):
         """
         Export acquired data
@@ -143,7 +182,7 @@ class Exports:
         df.to_excel(full_file+'.xlsx', index=False, sheet_name='Raw')
         return full_file
 
-    def xlsx_write(self, kw):
-        sheet_df = self.fdf.filter(regex=kw)
-        with pd.ExcelWriter(self.full_file+'.xlsx') as writer:
-            sheet_df.to_excel(writer, sheet_name=kw, index=False)
+    # def xlsx_write(self, kw):
+    #     sheet_df = self.fdf.filter(regex=kw)
+    #     with pd.ExcelWriter(self.full_file+'.xlsx') as writer:
+    #         sheet_df.to_excel(writer, sheet_name=kw, index=False)
