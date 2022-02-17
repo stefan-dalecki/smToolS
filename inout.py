@@ -38,14 +38,14 @@ class Setup:
         self.savefile = input('Name your output summary file:\n')
         # self.savefile = 'test'
 
-        def read(folder, format = 'csv'):
+        def read(format = 'csv'):
             """
             Read in ND2 files
 
             loop through directory and find nd2 movie files
 
             Args:
-                folder (string): directory
+                format (string): 3 character file format
 
             Returns:
                 movie class object
@@ -55,7 +55,7 @@ class Setup:
 
             """
 
-            for subdir, dirs, files in os.walk(folder):
+            for subdir, dirs, files in os.walk(self.rootdir):
                 for file in files:
                     if file.endswith(format):
                         tracks = Track(file)
@@ -65,6 +65,7 @@ class Setup:
                         movie = io.Movie(file[:-4], f'{subdir}/{file}',
                                          tracks = tracks)
             return movie
+
 
 class Track:
     """
