@@ -38,6 +38,72 @@ class Setup:
         self.savefile = input('Name your output summary file:\n')
         # self.savefile = 'test'
 
+        def read(folder, format = 'csv'):
+            """
+            Read in ND2 files
+
+            loop through directory and find nd2 movie files
+
+            Args:
+                folder (string): directory
+
+            Returns:
+                movie class object
+
+            Raises:
+                none
+
+            """
+
+            for subdir, dirs, files in os.walk(folder):
+                for file in files:
+                    if file.endswith(format):
+                        tracks = Track(file)
+                        file = file.replace('\\', '/')
+                        subdir = subdir.replace('\\', '/')
+                        print(subdir)
+                        movie = io.Movie(file[:-4], f'{subdir}/{file}',
+                                         tracks = tracks)
+            return movie
+
+class Track:
+    """
+    Identify and link trajectories
+
+    Use commercial, modified nearest neighbor algorithm to link particles
+
+    """
+    def __init__(self, im_path, quiet = False):
+        """
+        Track particles
+
+        Use trackpy to identify and link individual particles
+
+        Args:
+            im_path (string): nd2 image file im_path
+            quiet (bool): display text readout from trackpy
+
+        Returns:
+            trajectory data table as self.data
+
+        Raises:
+            none
+
+        """
+
+        from pims import ND2Reader_SDK
+        import trackpy as tp
+
+        with ND2Reader_SDK(im_path) as frames:
+            low = min([i.min() for i in movie])
+            diameter = 5
+            pix_mov = 10
+            if quiet:
+                tp.quiet()
+            f = tp.batch(movie, diameter, minmass = low,
+                         output = None, processes = 20)
+            t = tp.link(f, pix_mov)
+        self.data = t
 
 class Movie:
     """
@@ -47,7 +113,8 @@ class Movie:
 
     """
 
-    def __init__(self, name, file, frame_cutoff=15):
+    def __init__(self, name, file,
+                 tracks = pd.read_csv(file, index_col=[0]), frame_cutoff=15):
         """
         Establish movie file parameters
 
@@ -79,7 +146,7 @@ class Movie:
         self.frame_cutoff = frame_cutoff
         self.fig_title = f.Form.catdict(self.protein_info, self.ND,
                                         self.gasket, self.replicate)
-        self.df = pd.read_csv(file, index_col=[0])
+        self.df = tracks
         self.exportdata = {self.date, self.gasket,
                            self.replicate, self.protein_info, self.ND}
         print(f'Image Name : {name}',
