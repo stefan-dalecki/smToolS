@@ -71,10 +71,9 @@ class BSL:
                 df.groupby('Trajectory').filter(
                     lambda x: len(x) >= cutofflen).reset_index(drop=True))
                     / tot_tracks, 3)
-            numpertracklen = numpertracklen.append(
-                {'Minimum Frames': cutofflen,
-                 '% Tracks': tracks},
-                ignore_index=True)
+            new_row = pd.DataFrame.from_dict({'Minimum Frames': [cutofflen],
+                                              '% Tracks': [tracks]})
+            numpertracklen = pd.concat([numpertracklen, new_row])
             if tracks == 0:
                 break
         if display:

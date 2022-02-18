@@ -12,7 +12,7 @@ class Setup:
 
     """
 
-    def __init__(self):
+    def __init__(self, file_format = 'csv'):
         """
         Setup info for later export
 
@@ -37,34 +37,33 @@ class Setup:
         print(f'{self.rootdir}')
         self.savefile = input('Name your output summary file:\n')
         # self.savefile = 'test'
+        self.options = ['csv', 'nd2']
+        self.filetype = file_format
 
-        def read(format = 'csv'):
-            """
-            Read in ND2 files
+    def dfread(self, subdir, file):
+        """
+        Read in ND2 files
 
-            loop through directory and find nd2 movie files
+        loop through directory and find nd2 movie files
 
-            Args:
-                format (string): 3 character file format
+        Args:
+            format (string): 3 character file format
 
-            Returns:
-                movie class object
+        Returns:
+            movie class object
 
-            Raises:
-                none
+        Raises:
+            none
 
-            """
-
-            for subdir, dirs, files in os.walk(self.rootdir):
-                for file in files:
-                    if file.endswith(format):
-                        tracks = Track(file)
-                        file = file.replace('\\', '/')
-                        subdir = subdir.replace('\\', '/')
-                        print(subdir)
-                        movie = io.Movie(file[:-4], f'{subdir}/{file}',
-                                         tracks = tracks)
-            return movie
+        """
+        name = file[:-4]
+        filepath = f'{subdir}/{file}'
+        if self.filetype == 'csv':
+            movie = Movie(name, filepath)
+        if self.filetype == 'nd2':
+            tracking = Track(filepath)
+            movie = Movie(name, filepath, tracks = tracking.data)
+        return movie
 
 
 class Track:
@@ -115,7 +114,7 @@ class Movie:
     """
 
     def __init__(self, name, file,
-                 tracks = pd.read_csv(file, index_col=[0]), frame_cutoff=15):
+                 tracks = 'default', frame_cutoff=15):
         """
         Establish movie file parameters
 
@@ -147,9 +146,12 @@ class Movie:
         self.frame_cutoff = frame_cutoff
         self.fig_title = f.Form.catdict(self.protein_info, self.ND,
                                         self.gasket, self.replicate)
-        self.df = tracks
-        self.exportdata = {self.date, self.gasket,
-                           self.replicate, self.protein_info, self.ND}
+        if tracks == 'default':
+            self.df = pd.read_csv(file, index_col=[0])
+        else:
+            self.df = tracks
+        self.exportdata = self.date | self.gasket | \
+                          self.replicate | self.protein_info | self.ND
         print(f'Image Name : {name}',
               self.date, self.gasket, self.replicate, self.ND,
               f'Initial Trajectory Count : {f.Calc.traj_count(self.df)}',
@@ -203,8 +205,8 @@ class Exports:
             none
 
         """
-
-        self.export_df = self.export_df.append(dict, ignore_index=True)
+        new_row = pd.DataFrame.from_dict(dict)
+        self.export_df = pd.concat([self.export_df, new_row])
 
     def csv_export(self, df, rootdir):
         """
@@ -224,7 +226,7 @@ class Exports:
 
         """
 
-        self.fdf = df
+        self.fidf = df
         df.to_csv(rootdir+f'\\{self.name}.csv', index=False)
 
     def xlsx_export(self, df, rootdir):
@@ -246,7 +248,7 @@ class Exports:
         """
 
         full_file = rootdir+f'\\{self.name}'
-        self.fdf = df
+        self.fidf = df
         df.to_excel(full_file+'.xlsx', index=False, sheet_name='Raw')
         return full_file
 

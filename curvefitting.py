@@ -719,8 +719,8 @@ class FitFunctions:
 
         """
         try:
-            x_data = df.iloc[:, 0].values
-            y_data = df.iloc[:, 1].values
+            x_data = df.iloc[:, 0].values.astype(float)
+            y_data = df.iloc[:, 1].values.astype(float)
             if limits is None:
                 popt, pcov = curve_fit(equation, x_data, y_data,
                                        p0=p0)
@@ -765,8 +765,8 @@ class FitFunctions:
 
         """
 
-        x_data = df[x_col].values
-        y_data = df[y_col].values
+        x_data = df[x_col].values.astype(float)
+        y_data = df[y_col].values.astype(float)
         slope, intercept, r2, p, se = stats.linregress(x_data, y_data)
         # tinv = lambda p, degf: abs(t.ppf(p/2, degf))
         # ts = tinv(0.05, len(x_data)-2)

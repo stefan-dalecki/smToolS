@@ -25,19 +25,19 @@ def main(bright_method='auto'):
     """
 
     count = 1
-    script = io.Setup()
+    script = io.Setup(file_format = 'csv')
     folder = script.rootdir
     outfile = script.savefile
     try:
         print('\nBeginning Analyses\n')
         for subdir, dirs, files in os.walk(folder):
             for file in files:
-                if file.endswith('.csv'):
+                if file.endswith(script.filetype):
                     print(file)
                     file = file.replace('\\', '/')
                     subdir = subdir.replace('\\', '/')
                     print(subdir)
-                    movie = io.Movie(file[:-4], f'{subdir}/{file}')
+                    movie = script.dfread(subdir, file)
                     if bright_method == 'manual':
                         cut.Brightness.manual(movie, movie.df, display=False)
                     if bright_method == 'auto':
@@ -65,7 +65,7 @@ def main(bright_method='auto'):
         sleep(3)
         quit()
     raw_excel = todays_movies.xlsx_export(todays_movies.export_df, folder)
-    todays_movies.xlsx_sheet()
+    # todays_movies.xlsx_sheet()
     if raw_excel:
         print('Export successful', end='\n'*2)
 

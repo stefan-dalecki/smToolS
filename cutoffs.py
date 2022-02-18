@@ -126,8 +126,9 @@ class Diffusion:
             mean_steplen = mean(
                 movie.all_SDs[i]) * movie.pixel_size**2 / \
                 (4*movie.framestep_size)
-            movie.mean_SDs = movie.mean_SDs.append(
-                {'Step Length': i, 'MSD': mean_steplen}, ignore_index=True)
+            new_row = pd.DataFrame.from_dict({'Step Length': [i],
+                                              'MSD': [mean_steplen]})
+            movie.mean_SDs = pd.concat([movie.mean_SDs, new_row])
         print(
             f'\nFinal Trajectory Count : {f.Calc.traj_count(movie.df)}')
         movie.exportdata.update({'Events': len(movie.df)})
