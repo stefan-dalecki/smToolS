@@ -76,7 +76,7 @@ class Track:
     Use commercial, modified nearest neighbor algorithm to link particles
 
     """
-    def __init__(self, im_path, quiet = False):
+    def __init__(self, im_path, quiet = True):
         """
         Track particles
 
@@ -102,7 +102,8 @@ class Track:
 
         diameter = 5
         pix_mov = 10
-        # tp.quiet()
+        if quiet:
+            tp.quiet()
         power_through_it = True
         while power_through_it:
             with ND2Reader_SDK(im_path) as movie:
@@ -111,15 +112,19 @@ class Track:
                 low_mass = min([i.min() for i in movie])
                 try:
                     with tp.PandasHDFStore('data.h5') as s:
+                        print('\n^^^ This error is normal... unfortunately',
+                              'Beginning Batch Processing', sep = 2*'\n')
                         tp.batch(movie, diameter, minmass = low_mass,
                                  processes = 'auto', output = s)
-                        print('Batch Processing Complete')
+                        print('Batch Processing Complete',
+                              'Beginning Trajectory Linking', sep = 2*'\n')
                         for linked in tp.link_df_iter(s, pix_mov):
                             s.put(linked)
                         trajs = pd.concat(iter(s))
                         power_through_it = False
                         print('Trajectory Linking Complete')
                 except Exception:
+                    print('Occassionally this part has issues, trying again')
                     pass
         os.remove('data.h5')
         trajs = trajs.rename(columns={'particle': 'Trajectory',
@@ -130,7 +135,7 @@ class Track:
         trajs = f.Form.reorder(trajs, 'x', 2)
         trajs = f.Form.reorder(trajs, 'y', 3)
         trajs = f.Form.reorder(trajs, 'Brightness', 4)
-        trajs.to_csv(f'{im_path}_TP.csv')
+        trajs.to_csv(f'{im_path[:-4]}_TP.csv')
         self.data = trajs
 
 
@@ -235,7 +240,7 @@ class Exports:
         new_row = pd.DataFrame.from_dict(dict)
         self.export_df = pd.concat([self.export_df, new_row])
 
-    def csv_export(self, df, rootdir):
+    def csv(self, df, rootdir):
         """
         Export dataframe as csv file
 
@@ -256,7 +261,7 @@ class Exports:
         self.fidf = df
         df.to_csv(rootdir+f'\\{self.name}.csv', index=False)
 
-    def xlsx_export(self, df, rootdir):
+    def xlsx(self, df, rootdir):
         """
         Export dataframe as xlsx file
 
@@ -279,6 +284,10 @@ class Exports:
         df.to_excel(full_file+'.xlsx', index=False, sheet_name='Raw')
         return full_file
 
+    def figure(rootdir, name):
+        exdir = rootdir+'\Figures\\'
+        full = exdir + ''
+        pass
     # def xlsx_write(self, kw):
     #     sheet_df = self.fdf.filter(regex=kw)
     #     with pd.ExcelWriter(self.full_file+'.xlsx') as writer:
