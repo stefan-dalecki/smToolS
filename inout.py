@@ -33,10 +33,10 @@ class Setup:
         root = Tk()
         root.withdraw()
         self.rootdir = filedialog.askdirectory()
-        # self.rootdir = r'E:\PhD\Data\Johnny\ymd2022_02_10\gas1\Outputs'
+        # self.rootdir = r'E:\PhD\smTIRF\Test_Data\ymd2021_12_21'
         print(f'{self.rootdir}')
         self.savefile = input('Name your output summary file:\n')
-        # self.savefile = 'test'
+        # self.savefile = 'tp'
         self.options = ['csv', 'nd2']
         self.filetype = file_format
 
@@ -59,11 +59,14 @@ class Setup:
         name = file[:-4]
         filepath = f'{subdir}/{file}'
         if self.filetype == 'csv':
-            movie = Movie(name, filepath)
+            tracking = pd.read_csv(filepath, index_col=[0])
+            tracking.rename(columns={'m2': 'Brightness'}, inplace=True)
+            movie = Movie(name, filepath, tracks = tracking)
         if self.filetype == 'nd2':
             tracking = Track(filepath)
             movie = Movie(name, filepath, tracks = tracking.data)
         return movie
+
 
 
 class Track:
@@ -87,23 +90,49 @@ class Track:
             trajectory data table as self.data
 
         Raises:
-            none
+            Exception: restarts the loop (limit errors are oddly common???)
 
         """
 
         from pims import ND2Reader_SDK
         import trackpy as tp
+        import h5py
+        import os
 
-        with ND2Reader_SDK(im_path) as frames:
-            low = min([i.min() for i in movie])
-            diameter = 5
-            pix_mov = 10
-            if quiet:
-                tp.quiet()
-            f = tp.batch(movie, diameter, minmass = low,
-                         output = None, processes = 20)
-            t = tp.link(f, pix_mov)
-        self.data = t
+
+        diameter = 5
+        pix_mov = 10
+        # tp.quiet()
+        power_through_it = True
+        while power_through_it:
+            with ND2Reader_SDK(im_path) as movie:
+                if os.path.exists('data.h5'):
+                    os.remove('data.h5')
+                low_mass = min([i.min() for i in movie])
+                try:
+                    with tp.PandasHDFStore('data.h5') as s:
+                        tp.batch(movie, diameter, minmass = low_mass,
+                                 processes = 'auto', output = s)
+                        print('Batch Processing Complete')
+                        for linked in tp.link_df_iter(s, pix_mov):
+                            s.put(linked)
+                        trajs = pd.concat(iter(s))
+                        power_through_it = False
+                        print('Trajectory Linking Complete')
+                except Exception:
+                    pass
+        os.remove('data.h5')
+        trajs = trajs.rename(columns={'particle': 'Trajectory',
+                                      'frame': 'Frame',
+                                      'mass': 'Brightness'})
+        trajs = f.Form.reorder(trajs, 'Trajectory', 0)
+        trajs = f.Form.reorder(trajs, 'Frame', 1)
+        trajs = f.Form.reorder(trajs, 'x', 2)
+        trajs = f.Form.reorder(trajs, 'y', 3)
+        trajs = f.Form.reorder(trajs, 'Brightness', 4)
+        trajs.to_csv(f'{im_path}_TP.csv')
+        self.data = trajs
+
 
 class Movie:
     """
@@ -114,7 +143,7 @@ class Movie:
     """
 
     def __init__(self, name, file,
-                 tracks = 'default', frame_cutoff=15):
+                 tracks, frame_cutoff=15):
         """
         Establish movie file parameters
 
@@ -123,7 +152,7 @@ class Movie:
         Args:
             name (string): name of movies
             file (string): rootdir location
-            frame_cutoff (int): minimum frames for various analyses
+            frame_cutoff (int) : minimum frames for various analyses
 
         Returns:
             object metadata attributes
@@ -146,10 +175,7 @@ class Movie:
         self.frame_cutoff = frame_cutoff
         self.fig_title = f.Form.catdict(self.protein_info, self.ND,
                                         self.gasket, self.replicate)
-        if tracks == 'default':
-            self.df = pd.read_csv(file, index_col=[0])
-        else:
-            self.df = tracks
+        self.df = tracks
         self.exportdata = self.date | self.gasket | \
                           self.replicate | self.protein_info | self.ND
         print(f'Image Name : {name}',
@@ -205,6 +231,7 @@ class Exports:
             none
 
         """
+
         new_row = pd.DataFrame.from_dict(dict)
         self.export_df = pd.concat([self.export_df, new_row])
 
