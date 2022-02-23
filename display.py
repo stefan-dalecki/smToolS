@@ -45,8 +45,8 @@ class Scatter:
 class ExpDecay:
     def onecomp(movie, df, equation, tau1, cov1, r2, kinetic,
                 title=None, x_label=None, y_label=None):
-        x_data = df.iloc[:, 0].values
-        y_data = df.iloc[:, 1].values
+        x_data = df.iloc[:, 0].values.astype(float)
+        y_data = df.iloc[:, 1].values.astype(float)
         val1 = np.round(tau1*movie.framestep_size, 3)
         var1 = np.format_float_scientific(cov1, precision=1, exp_digits=2)
         r_val = round(r2, 6)
@@ -65,8 +65,8 @@ class ExpDecay:
 
     def twocomp(movie, df, a, tau1, cov1, tau2, cov2, r2, kinetic,
                 title=None, x_label=None, y_label=None):
-        x_data = df.iloc[:, 0].values
-        y_data = df.iloc[:, 1].values
+        x_data = df.iloc[:, 0].values.astype(float)
+        y_data = df.iloc[:, 1].values.astype(float)
         a1 = round(a, 3)*100
         a2 = round(100-a1, 3)
         val1 = round(tau1*movie.framestep_size, 3)
@@ -94,8 +94,8 @@ class ExpDecay:
 
     def explin(movie, df, tau1, cov1, b, cov2, r2, kinetic,
                title=None, x_label=None, y_label=None, legend=None):
-        x_data = df.iloc[:, 0].values
-        y_data = df.iloc[:, 1].values
+        x_data = df.iloc[:, 0].values.astype(float)
+        y_data = df.iloc[:, 1].values.astype(float)
         val1 = round(tau1*movie.framestep_size, 4)
         val2 = np.format_float_scientific(b*movie.framestep_size,
                                           precision=1, exp_digits=2)
