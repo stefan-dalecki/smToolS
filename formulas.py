@@ -224,3 +224,9 @@ class Form:
                 inter.append(st)
         catdict = ' // '.join(inter)
         return catdict
+
+    def reorder(df, col_name, loc):
+        col = df[col_name].values
+        df = df.drop(columns = [col_name])
+        df.insert(loc, col_name, col)
+        return df
