@@ -9,17 +9,17 @@ from statistics import mean
 class Brightness:
     def manual(movie, df, display=False):
         print('Beginning Pre-Processing...')
-        AVG = df.groupby('Trajectory')['m2'].mean()
+        AVG = df.groupby('Trajectory')['Brightness'].mean()
         df = df.join(AVG, on='Trajectory', rsuffix='-Average')
         while True:
-            d.Histogram.basic(AVG.values, 70,
+            d.Histogram.basic(AVG.values, 100,
                               movie.name,
-                              'Intensity (m2)',
+                              'Intensity (Brightness)',
                               'Number of Trajectories')
             low_out = float(input('Select the low brightness cutoff : '))
             high_out = float(input('Select the high brightness cutoff : '))
-            not_low = df[df['m2-Average'] > low_out]
-            not_high = df[df['m2-Average'] < high_out]
+            not_low = df[df['Brightness-Average'] > low_out]
+            not_high = df[df['Brightness-Average'] < high_out]
             list_low = not_low['Trajectory'].values
             list_high = not_high['Trajectory'].values
             rm_outliers_df = df[df['Trajectory'].isin(list_low)]
@@ -42,21 +42,23 @@ class Brightness:
         print('PreProcessing Complete')
 
     def auto(movie, df, display=False):
-        AVG = df.groupby('Trajectory')['m2'].mean()
+        AVG = df.groupby('Trajectory')['Brightness'].mean()
         df = df.join(AVG, on='Trajectory', rsuffix='-Average')
-        step = 1/10
-        bin_sdf = np.arange(0, 7, step)
-        groups = 2
+        min = round(df['Brightness-Average'].min(), 3)
+        max = round(df['Brightness-Average'].max(), 3)
+        step = (max - min) / 100
+        bin_sdf = np.arange(min, max, step)
+        groups = 5
         while groups <= 10:
             single_traj = df.drop_duplicates(subset='Trajectory', keep='first')
             sdf = single_traj. \
-                groupby(pd.cut(single_traj['m2-Average'], bins=bin_sdf)) \
-                .size().nlargest(groups)
-            cutoff_list = [i.right and i.right for i in sdf.index]
+                groupby(pd.cut(single_traj['Brightness-Average'],
+                bins=bin_sdf)).size().nlargest(groups)
+            cutoff_list = np.array([i.right and i.right for i in sdf.index])
             low_out, high_out = round(
-                min(cutoff_list), 1), round(max(cutoff_list), 1)
-            not_low = df[df['m2-Average'] > low_out]
-            not_high = df[df['m2-Average'] < high_out]
+                np.min(cutoff_list), 3), round(np.max(cutoff_list), 3)
+            not_low = df[df['Brightness-Average'] > low_out]
+            not_high = df[df['Brightness-Average'] < high_out]
             list_low = not_low['Trajectory'].values
             list_high = not_high['Trajectory'].values
             rm_outliers_df = df[df['Trajectory'].isin(list_low)]
@@ -74,14 +76,14 @@ class Brightness:
         if display:
             d.Histogram.lines(AVG.values, 70, low_out, high_out,
                               movie.name,
-                              'Intensity (m2)',
+                              'Intensity (Brightness)',
                               'Number of Trajectories')
         # for trajectory in df['Trajectory'].unique():
         #     t_rows = df[df['Trajectory'] == trajectory]
         #     df = df.drop(min(t_rows.index))
         movie.alldf = rm_df
         movie.df = grp_df
-        movie.exportdata.update({'Cutoffs': (low_out, high_out)})
+        movie.exportdata.update({'Cutoffs': [low_out, high_out]})
 
 
 class Diffusion:
