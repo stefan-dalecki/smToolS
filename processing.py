@@ -24,12 +24,13 @@ def main():
 
     """
 
-    bright_method = input('Brightness thresholding method? (manual or auto)\n')
     file_format = input('Analyze csv or nd2 files? (csv or nd2)\n')
-    count = 1
     script = io.Setup(file_format = file_format)
     folder = script.rootdir
     outfile = script.savefile
+    bright_method = input('Brightness thresholding method? (manual or auto)\n')
+    display = False
+    count = 1
     try:
         print('\nBeginning Analyses\n')
         for subdir, dirs, files in os.walk(folder):
@@ -41,7 +42,7 @@ def main():
                     print(subdir)
                     movie = script.dfread(subdir, file)
                     if bright_method == 'manual':
-                        cut.Brightness.manual(movie, movie.df, display=False)
+                        cut.Brightness.manual(movie, movie.df, display=display)
                     if bright_method == 'auto':
                         cut.Brightness.auto(movie, movie.df)
                     cut.Diffusion.displacement(movie, movie.df)
@@ -50,11 +51,11 @@ def main():
                     MSD = k.MSD()
                     cf.FitFunctions.linear(movie, movie.mean_SDs,
                                            'Step Length', 'MSD', MSD)
-                    cf.OneCompExpDecay(movie, BSL, display=False)
-                    cf.TwoCompExpDecay(movie, BSL, display=False)
-                    cf.Alt_TwoCompExpDecay(movie, BSL, display=False)
-                    cf.ExpLinDecay(movie, BSL, display=False)
-                    cf.TwoCompRayleigh(movie, Ray, display=False)
+                    cf.OneCompExpDecay(movie, BSL, display=display)
+                    cf.TwoCompExpDecay(movie, BSL, display=display)
+                    cf.Alt_TwoCompExpDecay(movie, BSL, display=display)
+                    cf.ExpLinDecay(movie, BSL, display=display)
+                    cf.TwoCompRayleigh(movie, Ray, display=display)
                     if count == 1:
                         todays_movies = io.Exports(
                             outfile, movie.exportdata, folder)
@@ -66,7 +67,7 @@ def main():
               'quitting program in 3 seconds.', sep='\n')
         sleep(3)
         quit()
-    raw_excel = todays_movies.xlsx_export(todays_movies.export_df, folder)
+    raw_excel = todays_movies.xlsx(todays_movies.export_df, folder)
     # todays_movies.xlsx_sheet()
     if raw_excel:
         print('Export successful', end='\n'*2)
