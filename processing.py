@@ -7,7 +7,7 @@ import os
 from time import sleep
 
 
-def main(bright_method='auto'):
+def main():
     """
     Main function for analyzing movies
 
@@ -24,8 +24,10 @@ def main(bright_method='auto'):
 
     """
 
+    bright_method = input('Brightness thresholding method? (manual or auto)\n')
+    file_format = input('Analyze csv or nd2 files? (csv or nd2)\n')
     count = 1
-    script = io.Setup(file_format = 'csv')
+    script = io.Setup(file_format = file_format)
     folder = script.rootdir
     outfile = script.savefile
     try:
