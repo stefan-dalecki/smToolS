@@ -7,7 +7,33 @@ from statistics import mean
 
 
 class Brightness:
+    """
+    Brightness thresholding
+
+    Remove trajectories based on their average spot brightness
+
+    """
+
     def manual(movie, df, display=False):
+        """
+        Manual thresholding
+
+        Set average brightness minimum and maximum values
+
+        Args:
+            movie: movie class object
+            df (df): large dataframe of all trajectory data
+
+        Returns:
+            movie.alldf (df): all trajectories post brightness corection
+            movie.df (df): brightness cutoffs and minimum track length
+            movie.exportdata (dict): updates data for final xlsx/csv export
+
+        Raises:
+            none
+
+        """
+
         print('Beginning Pre-Processing...')
         AVG = df.groupby('Trajectory')['Brightness'].mean()
         df = df.join(AVG, on='Trajectory', rsuffix='-Average')
@@ -38,10 +64,29 @@ class Brightness:
         #     df = df.drop(min(t_rows.index))
         movie.alldf = rm_df
         movie.df = grp_df
-        movie.exportdata.update({'Cutoffs': (low_out, high_out)})
+        movie.exportdata.update({'Cutoffs': [low_out, high_out]})
         print('PreProcessing Complete')
 
     def auto(movie, df, display=False):
+        """
+        Auto thresholding
+
+        Bin all data and keep a select group of largest bins
+
+        Args:
+            movie: movie class objects
+            df (df): trajectory dataframe
+
+        Returns:
+            movie.alldf (df): all trajectories post brightness corection
+            movie.df (df): brightness cutoffs and minimum track length
+            movie.exportdata (dict): updates data for final xlsx/csv export
+
+        Raises:
+            none
+
+        """
+
         AVG = df.groupby('Trajectory')['Brightness'].mean()
         df = df.join(AVG, on='Trajectory', rsuffix='-Average')
         min = round(df['Brightness-Average'].min(), 3)
@@ -87,7 +132,31 @@ class Brightness:
 
 
 class Diffusion:
+    """
+    Diffusivity cutoffs
+
+    Remove trajectories that move too fast or slow
+
+    """
+
     def displacement(movie, df):
+        """
+        Mean squared displacement
+
+        Calculate brownian motion and remove if too fast or slow
+
+        Args:
+            movie: movie class object
+            df (df): entire dataframe of trajectory values
+
+        Returns:
+            movie.exportdata (dict): MSD and trajectory count
+
+        Raises:
+            none
+
+        """
+
         print('Beginning Diffusion Calculations...')
         movie.all_SDs = defaultdict(list)
         movie.mean_SDs = pd.DataFrame(columns=['Step Length', 'MSD'])
