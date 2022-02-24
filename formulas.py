@@ -218,11 +218,16 @@ class Form:
 
     def catdict(*dicts):
         inter = []
+        catdict = ' '
         for dict in dicts:
             for val in dict.items():
                 st = ': '.join(val)
                 inter.append(st)
-        catdict = ' // '.join(inter)
+        for i, str in enumerate(inter):
+            if (i+1) % 2 == 0:
+                catdict += str + '\n'
+            else:
+                catdict += str + ' // '
         return catdict
 
     def reorder(df, col_name, loc):
