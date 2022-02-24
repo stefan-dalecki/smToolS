@@ -54,7 +54,7 @@ class ExpDecay:
                     label=f'Data: n = {f.Calc.traj_count(movie.df)}')
         plt.xlabel(x_label)
         plt.ylabel(y_label)
-        plt.title(title + '\n--- One Comp Exp Decay ---')
+        plt.title(title + '--- One Comp Exp Decay ---')
         plt.plot(x_data, equation(x_data, tau1),
                  'r--', label=f'{kinetic.name}: {val1} {kinetic.unit}\n'
                  + f' Cov: {var1}\n'
@@ -78,7 +78,7 @@ class ExpDecay:
                     label=f'Data: n = {f.Calc.traj_count(movie.df)}')
         plt.xlabel(x_label)
         plt.ylabel(y_label)
-        plt.title(movie.fig_title + '\n --- Two Comp Exp Decay ---')
+        plt.title(movie.fig_title + '--- Two Comp Exp Decay ---')
         plt.plot(x_data, cf.TwoCompExpDecay.equation(
             x_data, a, tau1, tau2), 'r--',
             label=f'Maj Frac: {a1}\n'
@@ -106,7 +106,7 @@ class ExpDecay:
                     label=f'Data: n = {f.Calc.traj_count(movie.df)}')
         plt.xlabel(x_label)
         plt.ylabel(y_label)
-        plt.title(title + '\n --- Exp and Lin Decay ---')
+        plt.title(title + '--- Exp and Lin Decay ---')
         plt.plot(x_data, cf.ExpLinDecay.equation(
             x_data, tau1, b), 'r--',
             label=f'Exp {kinetic.name}: {val1} {kinetic.unit}\n'
