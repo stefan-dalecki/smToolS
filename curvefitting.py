@@ -395,7 +395,7 @@ class Alt_TwoCompExpDecay:
             pcov[0], pcov[1] = pcov[1], pcov[0]
             popt[2], popt[3] = popt[3], popt[2]
             pcov[2], pcov[3] = pcov[3], pcov[2]
-        movie.exportdata.update({'Alt_TwoExp Maj Frac (%)':
+        movie.exportdata.update({'Alt_ExpExp Maj Frac (%)':
                                 100*popt[0]/(popt[0]+popt[1]),
                                 'Alt_ExpExp Maj Frac Cov': pcov[0],
                                  f'Alt_ExpExp Maj {kinetic.name}'
@@ -754,7 +754,7 @@ class TwoCompRayleigh:
         movie.exportdata.update({f'{kinetic.name} Maj Frac (%)':
                                 popt[0]/(popt[0]+popt[1])*100,
                                 f'{kinetic.name} Maj Frac Cov': cov[0],
-                                 f'{kinetic.name} ({kinetic.unit})':
+                                 f'{kinetic.name} Maj ({kinetic.unit})':
                                  1e8*popt[2]**2/(2*movie.framestep_size),
                                  f'{kinetic.name} Maj Cov': cov[2],
                                  f'{kinetic.name} Min Frac (%)':
