@@ -12,7 +12,7 @@ class Setup:
 
     """
 
-    def __init__(self, file_format = 'csv'):
+    def __init__(self, file_format):
         """
         Setup info for later export
 
@@ -33,10 +33,10 @@ class Setup:
         root = Tk()
         root.withdraw()
         self.rootdir = filedialog.askdirectory()
-        # self.rootdir = r'E:\PhD\smTIRF\Test_Data\ymd2021_12_21'
+        # self.rootdir = r'E:\PhD\Data\Johnny\ymd2022_02_15'
         print(f'{self.rootdir}')
         self.savefile = input('Name your output summary file:\n')
-        # self.savefile = 'tp'
+        # self.savefile = 'bleachpulse'
         self.options = ['csv', 'nd2']
         self.filetype = file_format
 
@@ -76,7 +76,7 @@ class Track:
     Use commercial, modified nearest neighbor algorithm to link particles
 
     """
-    def __init__(self, im_path, quiet = True):
+    def __init__(self, im_path, quiet = False):
         """
         Track particles
 
@@ -105,6 +105,7 @@ class Track:
         if quiet:
             tp.quiet()
         power_through_it = True
+        attempts = 0
         while power_through_it:
             with ND2Reader_SDK(im_path) as movie:
                 if os.path.exists('data.h5'):
@@ -125,18 +126,24 @@ class Track:
                         print('Trajectory Linking Complete')
                 except Exception:
                     print('Occassionally this part has issues, trying again')
-                    pass
-        os.remove('data.h5')
-        trajs = trajs.rename(columns={'particle': 'Trajectory',
-                                      'frame': 'Frame',
-                                      'mass': 'Brightness'})
-        trajs = f.Form.reorder(trajs, 'Trajectory', 0)
-        trajs = f.Form.reorder(trajs, 'Frame', 1)
-        trajs = f.Form.reorder(trajs, 'x', 2)
-        trajs = f.Form.reorder(trajs, 'y', 3)
-        trajs = f.Form.reorder(trajs, 'Brightness', 4)
-        trajs.to_csv(f'{im_path[:-4]}_TP.csv')
-        self.data = trajs
+                    attempts += 1
+                    if attempts > 10:
+                        power_through_it = False
+        if os.path.exists('data.h5'):
+            os.remove('data.h5')
+        if trajs:
+            trajs = trajs.rename(columns={'particle': 'Trajectory',
+                                          'frame': 'Frame',
+                                          'mass': 'Brightness'})
+            trajs = f.Form.reorder(trajs, 'Trajectory', 0)
+            trajs = f.Form.reorder(trajs, 'Frame', 1)
+            trajs = f.Form.reorder(trajs, 'x', 2)
+            trajs = f.Form.reorder(trajs, 'y', 3)
+            trajs = f.Form.reorder(trajs, 'Brightness', 4)
+            trajs.to_csv(f'{im_path[:-4]}_TP.csv')
+            self.data = trajs
+        else:
+            print('utter failure')
 
 
 class Movie:
@@ -181,7 +188,7 @@ class Movie:
         self.fig_title = f.Form.catdict(self.protein_info, self.ND,
                                         self.gasket, self.replicate)
         self.df = tracks
-        self.exportdata = self.date | self.gasket | \
+        self.exportdata = self.name | self.date | self.gasket | \
                           self.replicate | self.protein_info | self.ND
         print(f'Image Name : {name}',
               self.date, self.gasket, self.replicate, self.ND,
@@ -237,7 +244,7 @@ class Exports:
 
         """
 
-        new_row = pd.DataFrame.from_dict(dict)
+        new_row = pd.DataFrame(dict, index = [0])
         self.export_df = pd.concat([self.export_df, new_row])
 
     def csv(self, df, rootdir):
