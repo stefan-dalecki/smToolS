@@ -225,9 +225,9 @@ class Form:
                 inter.append(st)
         for i, str in enumerate(inter):
             if (i+1) % 2 == 0:
-                catdict += str + '\n'
+                catdict += ' // ' + str + '\n'
             else:
-                catdict += str + ' // '
+                catdict += str
         return catdict
 
     def reorder(df, col_name, loc):
