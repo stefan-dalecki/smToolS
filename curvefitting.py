@@ -243,16 +243,16 @@ class TwoCompExpDecay:
             popt[0] = 1 - popt[0]
             popt[1], popt[2] = popt[2], popt[1]
             pcov[1], pcov[2] = pcov[2], pcov[1]
-        self.exportdata.update({'TwoExpA Maj Frac (%)': popt[0]*100,
-                                'TwoExpA Maj Frac Cov': pcov[0],
-                                f'TwoExpA {kinetic.name} Maj ({kinetic.unit})':
+        self.exportdata.update({'ExpExpA Maj Frac (%)': popt[0]*100,
+                                'ExpExpA Maj Frac Cov': pcov[0],
+                                f'ExpExpA {kinetic.name} Maj ({kinetic.unit})':
                                 popt[1]*self.framestep_size,
-                                f'TwoExpA {kinetic.name} Maj Cov': pcov[1],
-                                f'TwoExpA {kinetic.name} Min Frac':
+                                f'ExpExpA {kinetic.name} Maj Cov': pcov[1],
+                                f'ExpExpA {kinetic.name} Min Frac':
                                 100-popt[0]*100,
-                                f'TwoExpA {kinetic.name} Min ({kinetic.unit})':
+                                f'ExpExpA {kinetic.name} Min ({kinetic.unit})':
                                 popt[2]*self.framestep_size,
-                                f'TwoExpA {kinetic.name} Min Cov': pcov[2],
+                                f'ExpExpA {kinetic.name} Min Cov': pcov[2],
                                 'R\u00b2 ExpExpA': r2})
 
     def figure(movie, df, popt, pcov, r2, kinetic):
@@ -316,7 +316,7 @@ class Alt_TwoCompExpDecay:
         estimation = f.Calc.e_estimation(movie.bsldf)
         popt, pcov, r2, ssqr = FitFunctions.curve(movie, movie.bsldf,
                                                   Alt_TwoCompExpDecay.equation,
-                                                  [0.5, 0.5, estimation,
+                                                  [0.6, 0.4, estimation,
                                                    estimation],
                                                   Alt_TwoCompExpDecay.bounds(),
                                                   Alt_TwoCompExpDecay.output,
@@ -397,19 +397,19 @@ class Alt_TwoCompExpDecay:
             pcov[2], pcov[3] = pcov[3], pcov[2]
         movie.exportdata.update({'Alt_TwoExp Maj Frac (%)':
                                 100*popt[0]/(popt[0]+popt[1]),
-                                'Alt_TwoExp Maj Frac Cov': pcov[0],
-                                 f'Alt_TwoExp Maj {kinetic.name}'
+                                'Alt_ExpExp Maj Frac Cov': pcov[0],
+                                 f'Alt_ExpExp Maj {kinetic.name}'
                                  f'({kinetic.unit})':
                                  popt[2]*movie.framestep_size,
-                                 f'Alt_TwoExp Maj {kinetic.name} Cov': pcov[2],
-                                 'Alt_TwoExp Min Frac (%)':
+                                 f'Alt_ExpExp Maj {kinetic.name} Cov': pcov[2],
+                                 'Alt_ExpExp Min Frac (%)':
                                  100*popt[1]/(popt[0]+popt[1]),
-                                 'Alt_TwoExp Min Frac Cov': pcov[1],
-                                 f'Alt_TwoExp Min {kinetic.name}'
+                                 'Alt_ExpExp Min Frac Cov': pcov[1],
+                                 f'Alt_ExpExp Min {kinetic.name}'
                                  f'({kinetic.unit})':
                                  popt[3]*movie.framestep_size,
-                                 f'Alt_TwoExp Min {kinetic.name} Cov': pcov[3],
-                                 'R\u00b2 Alt_TwoExp': r2})
+                                 f'Alt_ExpExp Min {kinetic.name} Cov': pcov[3],
+                                 'R\u00b2 Alt_ExpExp': r2})
 
     def figure(movie, df, popt, cov, r2, kinetic):
         """
@@ -580,7 +580,89 @@ class ExpLinDecay:
                           y_label=kinetic.y_label)
 
 
-# Two Part Rayleigh (a*Rayleigh Probability Density Fuction + b*...)
+class OneCompRayleigh:
+        """
+        One component Rayleigh fitting workflow
+
+        Workflow for fitting including equation, bounds, outputs, and figure
+        ***incomplete***
+
+        """
+
+        def __init__(self, movie, kinetic, display=False):
+            """
+            Full model fitting process
+
+            Calling this function runs a complete model fitting series
+
+            Args:
+                self: placeholder variable
+                movie: movie class object
+                kinetic: kinetic of interest
+                display: choice to display the resulting fit data
+
+            Returns:
+                outputs data to movie class object
+
+            Raises:
+                none
+
+            """
+
+            estimation = [2.5e-5]
+            popt, pcov, r2, sumsqr = FitFunctions.curve(movie, movie.raydf,
+                                                        OneCompRayleigh.equation,
+                                                        estimation,
+                                                        OneCompRayleigh.bounds(),
+                                                        OneCompRayleigh.output,
+                                                        kinetic)
+
+        def equation(t, sig):
+            """
+            Rayeigh probability distribution
+
+            Probability density function with no weights
+
+            Args:
+                t (int): time
+                sig (float): diffusion constant
+
+            Returns:
+                one component Rayleigh equation
+
+            Raises:
+                none
+
+            """
+
+            return t*np.exp(-t**2/(2*sig**2))/sig**2
+
+        def bounds():
+            """
+            One component Rayleigh bounds
+
+            no limits to sigma value
+
+            Args:
+                none
+
+            Returns:
+                list: min and max parameter values
+
+            Raises:
+                none
+
+            """
+
+            return [(-np.inf), (np.inf)]
+
+        def output(movie, popt, cov, r2, kinetic):
+            movie.exportdata.update({f'{kinetic.name} ({kinetic.unit})':
+                                     1e8*popt[0]**2/(2*movie.framestep_size),
+                                     f'{kinetic.name} Cov': cov[0],
+                                     'R\u00b2 OneRay': r2})
+
+
 class TwoCompRayleigh:
     """
     Two component Rayleigh fitting workflow
@@ -681,7 +763,7 @@ class TwoCompRayleigh:
                                  f'{kinetic.name} Min ({kinetic.unit})':
                                  1e8*popt[3]**2/(2*movie.framestep_size),
                                  f'{kinetic.name} Min Cov': cov[3],
-                                 'R\u00b2 Ray': r2})
+                                 'R\u00b2 TwoRay': r2})
 
 
 class FitFunctions:
