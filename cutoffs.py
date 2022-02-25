@@ -38,7 +38,7 @@ class Brightness:
         AVG = df.groupby('Trajectory')['Brightness'].mean()
         df = df.join(AVG, on='Trajectory', rsuffix='-Average')
         while True:
-            d.Histogram.basic(AVG.values, 100,
+            d.Histogram.basic(AVG.values, 50,
                               movie.name,
                               'Intensity (Brightness)',
                               'Number of Trajectories')
@@ -64,7 +64,8 @@ class Brightness:
         #     df = df.drop(min(t_rows.index))
         movie.alldf = rm_df
         movie.df = grp_df
-        movie.exportdata.update({'Cutoffs': [low_out, high_out]})
+        movie.exportdata.update({'Low Cutoff': low_out,
+                                 'High Cutoff': high_out})
         print('PreProcessing Complete')
 
     def auto(movie, df, display=False):
@@ -89,12 +90,13 @@ class Brightness:
 
         AVG = df.groupby('Trajectory')['Brightness'].mean()
         df = df.join(AVG, on='Trajectory', rsuffix='-Average')
-        min = round(df['Brightness-Average'].min(), 3)
-        max = round(df['Brightness-Average'].max(), 3)
-        step = (max - min) / 100
+        min = df['Brightness-Average'].min()
+        max = df['Brightness-Average'].max()
+        bins = 100
+        step = (max - min) / bins
         bin_sdf = np.arange(min, max, step)
-        groups = 5
-        while groups <= 10:
+        groups = 1
+        while groups <= bins*0.2:
             single_traj = df.drop_duplicates(subset='Trajectory', keep='first')
             sdf = single_traj. \
                 groupby(pd.cut(single_traj['Brightness-Average'],
@@ -113,13 +115,13 @@ class Brightness:
             grp_df = rm_df.groupby('Trajectory') \
                 .filter(lambda x: len(x) > movie.frame_cutoff) \
                 .reset_index(drop=True)
-            if f.Calc.traj_count(grp_df) > 150:
+            if f.Calc.traj_count(grp_df) > 200:
                 break
             else:
                 groups += 1
                 continue
         if display:
-            d.Histogram.lines(AVG.values, 70, low_out, high_out,
+            d.Histogram.lines(AVG.values, bins, low_out, high_out,
                               movie.name,
                               'Intensity (Brightness)',
                               'Number of Trajectories')
@@ -128,7 +130,8 @@ class Brightness:
         #     df = df.drop(min(t_rows.index))
         movie.alldf = rm_df
         movie.df = grp_df
-        movie.exportdata.update({'Cutoffs': [low_out, high_out]})
+        movie.exportdata.update({'Low Cutoff': low_out,
+                                 'High Cutoff': high_out})
 
 
 class Diffusion:
@@ -182,7 +185,7 @@ class Diffusion:
                     diff_coeff1 = mean(
                         SD_SL1) * movie.pixel_size**2 / \
                         (4*movie.framestep_size)
-                    if diff_coeff1 <= 5e-9 or diff_coeff1 >= 5e-8:
+                    if diff_coeff1 <= 1e-9 or diff_coeff1 >= 3e-8:
                         movie.df.drop(
                             df.loc[df['Trajectory'] == trajectory].index,
                             inplace=True)
