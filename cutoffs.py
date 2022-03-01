@@ -150,7 +150,7 @@ class Diffusion:
 
         Args:
             movie: movie class object
-            df (df): entire dataframe of trajectory values
+            df (df): dataframe of trajectory values
 
         Returns:
             movie.exportdata (dict): MSD and trajectory count
