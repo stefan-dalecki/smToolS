@@ -5,44 +5,128 @@ import curvefitting as cf
 
 
 class Histogram:
-    def basic(list, bins,
-              title=None, x_label=None, y_label=None):
-        plt.hist(list, bins, range=[0, 7])
+    """
+    Histogram plots
+
+    Display df columns as histogram
+
+    """
+
+    def basic(list, bins, title=None, x_label=None, y_label=None):
+        """
+        Basic histogram
+
+        Histogram of binned intensity data (typically)
+
+        Args:
+            list (list): raw float data
+            bins (int): number of bins
+            title (str): figure title
+            x_label (str): x-axis label
+            y_label (str): y-axis label
+
+        Returns:
+            histogram
+
+        Raises:
+            none
+
+        """
+
+        plt.hist(list, bins, range=[min(list), max(list)],
+                 edgecolor = 'black', linewidth = 1, color = 'white')
         plt.title(title)
         plt.xlabel(x_label)
         plt.ylabel(y_label)
-        plt.grid(axis='x')
+        plt.grid(axis='x', color = 'grey')
         plt.tight_layout()
         plt.show(block=True)
 
     def lines(list, bins, low_cut, high_cut,
               title=None, x_label=None, y_label=None):
-        n, bins, patches = plt.hist(list, bins, range=[0, 7])
+        """
+        Histogram with lines
+
+        Vertical lines designate cutoffs for downstream removal
+
+        Args:
+            list (list): raw float data
+            bins (int): number of bins
+            low_cut (float): low intensity cutoff
+            high_cut (float): high intensity cutoff
+            title (str): figure title
+            x_label (str): x-axis label
+            y_label (str): y-axis label
+
+        Returns:
+            histogram with vertical lines
+
+        Raises:
+            none
+
+        """
+
+        n, bins, patches = plt.hist(list, bins, range=[min(list), max(list)],
+                                    edgecolor = 'black', linewidth = 1,
+                                    color = 'white')
         plt.title(title)
         plt.xlabel(x_label)
         plt.ylabel(y_label)
-        plt.grid(axis='x')
-        plt.vlines(low_cut, 0, n.max(), color='red')
-        plt.vlines(high_cut, 0, n.max(), color='red')
+        plt.vlines(low_cut, 0, n.max(), color='orange')
+        plt.vlines(high_cut, 0, n.max(), color='orange')
         plt.tight_layout()
         plt.show(block=True)
 
 
 class Scatter:
-    def scatter(df,
-                title=None, x_label=None, y_label=None):
+    """
+    Scatterplot
+
+    scatterplots with optional line overlays
+
+
+    """
+
+    def scatter(df, title=None, x_label=None, y_label=None):
+        """
+        Basic scatterplot
+
+        Uses a two column dataframe to create scatter
+
+        Args:
+            df (df): two column dataframe, x and y values in 1st/2nd columns
+            title (str): figure title
+            x_label (str): x-axis label
+            y_label (str): y-axis label
+
+        Returns:
+            scatterplot
+
+        Raises:
+            AssertionError: dataframe lacks at least two columns
+
+        """
+
+        assert df.shape[1] >= 2, 'Dataframe doesn not have at least 2 columns'
         x = df.iloc[:, 0].values
         y = df.iloc[:, 1].values
-        plt.scatter(x, y, s=2, alpha=0.5, cmap='bone')
+        plt.scatter(x, y, s=2, alpha=0.5, color = 'slateblue')
         plt.title(title)
         plt.xlabel(x_label)
         plt.ylabel(y_label)
-        plt.legend(loc='upper left')
+        plt.legend(loc='upper right')
         plt.tight_layout()
         plt.show()
 
 
 class ExpDecay:
+    """
+    Exponential decay functions
+
+    Scatterplot with overlayed line
+
+    """
+
     def onecomp(movie, df, equation, tau1, cov1, r2, kinetic,
                 title=None, x_label=None, y_label=None):
         x_data = df.iloc[:, 0].values.astype(float)
@@ -50,7 +134,7 @@ class ExpDecay:
         val1 = np.round(tau1*movie.framestep_size, 3)
         var1 = np.format_float_scientific(cov1, precision=1, exp_digits=2)
         r_val = round(r2, 6)
-        plt.scatter(x_data, y_data, s=2, alpha=0.5,
+        plt.scatter(x_data, y_data, s=2, alpha=0.5, color='black',
                     label=f'Data: n = {f.Calc.traj_count(movie.df)}')
         plt.xlabel(x_label)
         plt.ylabel(y_label)
@@ -58,7 +142,7 @@ class ExpDecay:
         plt.plot(x_data, equation(x_data, tau1),
                  'r--', label=f'{kinetic.name}: {val1} {kinetic.unit}\n'
                  + f' Cov: {var1}\n'
-                 + f'R\u00b2: {r_val}')
+                 + f'R\u00b2: {r_val}', color='darkorange', linewidth=2)
         plt.legend(loc='upper right')
         plt.tight_layout()
         plt.show()
