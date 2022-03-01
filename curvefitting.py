@@ -800,6 +800,7 @@ class FitFunctions:
             Exception: description
 
         """
+
         try:
             x_data = df.iloc[:, 0].values.astype(float)
             y_data = df.iloc[:, 1].values.astype(float)
