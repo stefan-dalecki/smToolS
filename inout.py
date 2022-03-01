@@ -56,6 +56,7 @@ class Setup:
             none
 
         """
+
         name = file[:-4]
         filepath = f'{subdir}/{file}'
         if self.filetype == 'csv':
@@ -76,6 +77,7 @@ class Track:
     Use commercial, modified nearest neighbor algorithm to link particles
 
     """
+
     def __init__(self, im_path, quiet = False):
         """
         Track particles
@@ -214,6 +216,7 @@ class Exports:
             name (string): typically the same as Setup.rootdir()
             export_df: takes keys (columns) from export data and creates empty
                 dataframe
+            rootdir (str): root directory
 
         Returns:
             none
