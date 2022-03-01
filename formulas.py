@@ -153,26 +153,29 @@ class Find:
 
     """
 
-    def identifiers(ex_string, separator, val_name, IDs, nf='not found'):
+    def identifiers(en_string, separator, val_name, IDs, nf='not found'):
         """
         Identify metrics from file name
 
         Find details like protein type, gasket, replicate, and so on
 
         Args:
-            ex_string (string):
+            en_string (str): entire string
+            separator (str): separator of interest in entire string
+            val_name (str):
 
         Returns:
-            type: description
+            output (dict): val_name (key) and value pair
+                           two key-value pairs if multiple proteins
 
         Raises:
-            Exception: description
+            Exception: keeps key (val_name) with NaN value
 
         """
 
         try:
             output = {}
-            san_string = [i for i in ex_string.lower().split(separator)]
+            san_string = [i for i in en_string.lower().split(separator)]
             for sub_i, sub_str in enumerate(san_string):
                 for ID in IDs:
                     exist = [i.find(ID) for i in san_string]
@@ -217,6 +220,22 @@ class Form:
     """
 
     def catdict(*dicts):
+        """
+        Concatenate dictionaries
+
+        Split dictionary key-value pairs into pairs for figure titles
+
+        Args:
+            *dicts (dict): key-value data
+
+        Returns:
+            catdict (dict): concatenated dictionary
+
+        Raises:
+            none
+
+        """
+
         inter = []
         catdict = ' '
         for dict in dicts:
@@ -231,6 +250,24 @@ class Form:
         return catdict
 
     def reorder(df, col_name, loc):
+        """
+        Move df columns
+
+        Change the location of columns by column name and locatin index
+
+        Args:
+            col_name (str): column name
+            loc (int): index location of new column location
+
+        Returns:
+            df (df): rearranged dataframe
+
+        Raises:
+            AssertionError: column name not in df
+
+        """
+
+        assert col_name in df.columns
         col = df[col_name].values
         df = df.drop(columns = [col_name])
         df.insert(loc, col_name, col)
