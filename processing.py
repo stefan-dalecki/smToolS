@@ -25,7 +25,10 @@ def main():
     """
 
     file_format = input('Analyze csv or nd2 files? (csv or nd2)\n')
-    # file_format = 'csv'
+    if file_format == 'sample':
+        ### call speciifc sample sequence and then end
+        pass
+        quit()
     script = io.Setup(file_format)
     folder = script.rootdir
     outfile = script.savefile
