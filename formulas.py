@@ -272,3 +272,59 @@ class Form:
         df = df.drop(columns = [col_name])
         df.insert(loc, col_name, col)
         return df
+
+    def userinput(str, list):
+        """
+        User input interface
+
+        Allow user to select option from list
+
+        Args:
+            str (str): option category
+            list (list): list of possible options
+
+        Returns:
+            ans (str): option selection
+
+        Raises:
+            none
+
+        """
+
+        print(f'\nAvailable options\n{list}', end = '\n'*2)
+        while True:
+            ans = input(f'From options above, select your {str}: ')
+            if ans not in list:
+                print('Not an available option\n')
+            else:
+                break
+        return ans
+
+    def inputbool(str):
+        """
+        User input boolean
+
+        Input answer is converted into boolean
+
+        Args:
+            str (str): user question
+
+        Returns:
+            ans (bool): True/False response to str user question
+
+        Raises:
+            none
+
+        """
+
+        while True:
+            ans = input(str)
+            if ans == 'y':
+                ans = True
+                break
+            elif ans == 'n':
+                ans = False
+                break
+            else:
+                print('Not an available option\n')
+        return ans
