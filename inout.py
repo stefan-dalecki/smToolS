@@ -31,12 +31,12 @@ class Setup:
 
         """
 
+        self.savefile = input('Name your output file: ')
+        filetype_options = ['csv', 'nd2', 'sample']
         root = Tk()
         root.withdraw()
         self.rootdir = filedialog.askdirectory()
         print(self.rootdir)
-        self.savefile = input('Name your output file: ')
-        filetype_options = ['csv', 'nd2', 'sample']
         self.filetype = f.Form.userinput('filetype', filetype_options)
         brightmethod_options = ['manual', 'auto']
         self.brightmethod = f.Form.userinput('brigthness thresholding method',
