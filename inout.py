@@ -2,6 +2,7 @@ import pandas as pd
 from tkinter import filedialog
 from tkinter import Tk
 import formulas as f
+import os
 
 
 class Setup:
@@ -12,7 +13,7 @@ class Setup:
 
     """
 
-    def __init__(self, file_format):
+    def __init__(self):
         """
         Setup info for later export
 
@@ -33,14 +34,42 @@ class Setup:
         root = Tk()
         root.withdraw()
         self.rootdir = filedialog.askdirectory()
-        # self.rootdir = r'E:\PhD\Data\Johnny\ymd2022_02_15'
-        print(f'{self.rootdir}')
-        self.savefile = input('Name your output summary file:\n')
-        # self.savefile = 'bleachpulse'
-        self.options = ['csv', 'nd2']
-        self.filetype = file_format
+        print(self.rootdir)
+        self.savefile = input('Name your output file: ')
+        filetype_options = ['csv', 'nd2', 'sample']
+        self.filetype = f.Form.userinput('filetype', filetype_options)
+        brightmethod_options = ['manual', 'auto']
+        self.brightmethod = f.Form.userinput('brigthness thresholding method',
+                                             brightmethod_options)
+        self.display = f.Form.inputbool('\nDisplay figures? (y/n): ')
 
-    def dfread(self, subdir, file):
+    def filelist(self):
+        """
+        List form of all files
+
+        All filepaths that meet criteria for analysis
+
+        Args:
+            self
+
+        Returns:
+            self.filelist (list): all filepaths in one list
+
+        Raises:
+            none
+
+        """
+
+        self.filelist = []
+        for subdir, dirs, files in os.walk(self.rootdir, topdown=False):
+            for file in files:
+                if file.endswith(self.filetype):
+                    file = file.replace('\\', '/')
+                    subdir = subdir.replace('\\', '/')
+                    filepath = f'{subdir}/{file}'
+                    self.filelist += [filepath]
+
+    def dfread(self, filepath):
         """
         Read in ND2 files
 
@@ -57,8 +86,7 @@ class Setup:
 
         """
 
-        name = file[:-4]
-        filepath = f'{subdir}/{file}'
+        name = filepath.split('/')[-1][:-4]
         if self.filetype == 'csv':
             tracking = pd.read_csv(filepath, index_col=[0])
             tracking.rename(columns={'m2': 'Brightness'}, inplace=True)
@@ -197,7 +225,6 @@ class Movie:
               f'Initial Trajectory Count : {f.Calc.traj_count(self.df)}',
               sep='\n', end='\n'*2)
 
-
 class Exports:
     """
     Export data
@@ -289,7 +316,7 @@ class Exports:
 
         """
 
-        full_file = rootdir+f'\\{self.name}'
+        full_file = script.rootdir+f'\\{self.name}'
         self.fidf = df
         df.to_excel(full_file+'.xlsx', index=False, sheet_name='Raw')
         return full_file
