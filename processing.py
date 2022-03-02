@@ -7,7 +7,7 @@ import os
 from time import sleep
 
 
-def main():
+def main(script):
     """
     Main function for analyzing movies
 
@@ -24,55 +24,32 @@ def main():
 
     """
 
-    file_format = input('Analyze csv or nd2 files? (csv or nd2)\n')
-    if file_format == 'sample':
-        ### call speciifc sample sequence and then end
-        pass
-        quit()
-    script = io.Setup(file_format)
-    folder = script.rootdir
-    outfile = script.savefile
-    bright_method = input('Brightness thresholding method? (manual or auto)\n')
-    # bright_method = 'auto'
-    display_ans = input('Display figures? (y/n)\n')
-    # display_ans = 'n'
-    if display_ans == 'y':
-        display = True
-    else:
-        display = False
     count = 1
     try:
-        print('\nBeginning Analyses\n')
-        for subdir, dirs, files in os.walk(folder, topdown=False):
-            for file in files:
-                if file.endswith(script.filetype):
-                    print(file)
-                    file = file.replace('\\', '/')
-                    subdir = subdir.replace('\\', '/')
-                    print(subdir)
-                    movie = script.dfread(subdir, file)
-                    if bright_method == 'manual':
-                        cut.Brightness.manual(movie, movie.df, display)
-                    if bright_method == 'auto':
-                        cut.Brightness.auto(movie, movie.df, display)
-                    cut.Diffusion.displacement(movie, movie.df)
-                    BSL = k.BSL(movie)
-                    Ray = k.RayD(movie, movie.onestep_SDs)
-                    MSD = k.MSD()
-                    cf.FitFunctions.linear(movie, movie.mean_SDs,
-                                           'Step Length', 'MSD', MSD)
-                    cf.OneCompExpDecay(movie, BSL, display)
-                    cf.TwoCompExpDecay(movie, BSL, display)
-                    cf.Alt_TwoCompExpDecay(movie, BSL, display)
-                    cf.ExpLinDecay(movie, BSL, display)
-                    cf.OneCompRayleigh(movie, Ray, display)
-                    cf.TwoCompRayleigh(movie, Ray, display)
-                    if count == 1:
-                        todays_movies = io.Exports(
-                            outfile, movie.exportdata, folder)
-                        count = 0
-                    todays_movies.build_df(movie.exportdata)
-                    print(todays_movies.export_df)
+        for file in script.filelist:
+            movie = script.dfread(file)
+            if script.brightmethod == 'manual':
+                cut.Brightness.manual(movie, movie.df, script.display)
+            if script.brightmethod == 'auto':
+                cut.Brightness.auto(movie, movie.df, script.display)
+            cut.Diffusion.displacement(movie, movie.df)
+            BSL = k.BSL(movie)
+            Ray = k.RayD(movie, movie.onestep_SDs)
+            MSD = k.MSD()
+            cf.FitFunctions.linear(movie, movie.mean_SDs,
+                                   'Step Length', 'MSD', MSD)
+            cf.OneCompExpDecay(movie, BSL, script.display)
+            cf.TwoCompExpDecay(movie, BSL, script.display)
+            cf.Alt_TwoCompExpDecay(movie, BSL, script.display)
+            cf.ExpLinDecay(movie, BSL, script.display)
+            cf.OneCompRayleigh(movie, Ray, script.display)
+            cf.TwoCompRayleigh(movie, Ray, script.display)
+            if count == 1:
+                todays_movies = io.Exports(
+                    outfile, movie.exportdata, folder)
+                count = 0
+            todays_movies.build_df(movie.exportdata)
+            print(todays_movies.export_df)
     except Exception as e:
         print('Error', traceback.print_exc(e),
               'quitting program in 3 seconds.', sep='\n')
@@ -85,7 +62,11 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    script = io.Setup()
+    script.filelist()
+    folder = script.rootdir
+    outfile = script.savefile
+    main(script)
     print('Analyses Complete\nEnding Program in...')
     count_down = 3
     for count in reversed(range(1, count_down+1)):
