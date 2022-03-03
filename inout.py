@@ -3,6 +3,7 @@ from tkinter import filedialog
 from tkinter import Tk
 import formulas as f
 import os
+from openpyxl import load_workbook, Workbook
 
 
 class Setup:
@@ -31,13 +32,13 @@ class Setup:
 
         """
 
-        self.savefile = input('Name your output file: ')
         filetype_options = ['csv', 'nd2', 'sample']
+        self.filetype = f.Form.userinput('filetype', filetype_options)
         root = Tk()
         root.withdraw()
         self.rootdir = filedialog.askdirectory()
         print(self.rootdir)
-        self.filetype = f.Form.userinput('filetype', filetype_options)
+        self.savefile = input('\nName your output file: ')
         brightmethod_options = ['manual', 'auto']
         self.brightmethod = f.Form.userinput('brigthness thresholding method',
                                              brightmethod_options)
@@ -220,7 +221,7 @@ class Movie:
         self.df = tracks
         self.exportdata = self.name | self.date | self.gasket | \
                           self.replicate | self.protein_info | self.ND
-        print(f'Image Name : {name}',
+        print(f'\nImage Name : {name}',
               self.date, self.gasket, self.replicate, self.ND,
               f'Initial Trajectory Count : {f.Calc.traj_count(self.df)}',
               sep='\n', end='\n'*2)
@@ -233,7 +234,7 @@ class Exports:
 
     """
 
-    def __init__(self, name, exportdata, rootdir):
+    def __init__(self, name, rootdir):
         """
         Export acquired data
 
@@ -254,8 +255,11 @@ class Exports:
         """
 
         self.name = name
-        self.export_df = pd.DataFrame(columns=list(exportdata.keys()))
-        self.writer = rootdir+name+'.xlsx'
+        self.exportpath = rootdir+f'\\{self.name}.xlsx'
+
+    def start_df(self, exportdata, rootdir):
+        start = pd.DataFrame(columns=list(exportdata.keys()))
+        self.export_df = start
 
     def build_df(self, dict):
         """
@@ -298,7 +302,7 @@ class Exports:
         self.fidf = df
         df.to_csv(rootdir+f'\\{self.name}.csv', index=False)
 
-    def xlsx(self, df, rootdir):
+    def xlsx(self, script, df):
         """
         Export dataframe as xlsx file
 
