@@ -7,7 +7,7 @@ import os
 from time import sleep
 
 
-def main(script):
+def main(script, exports):
     """
     Main function for analyzing movies
 
@@ -45,17 +45,17 @@ def main(script):
             cf.OneCompRayleigh(movie, Ray, script.display)
             cf.TwoCompRayleigh(movie, Ray, script.display)
             if count == 1:
-                todays_movies = io.Exports(
-                    outfile, movie.exportdata, folder)
+                exports.start_df(movie.exportdata, script.rootdir)
+                # todays_movies = io.Exports(
+                #     outfile, movie.exportdata, folder)
                 count = 0
-            todays_movies.build_df(movie.exportdata)
-            print(todays_movies.export_df)
+            exports.build_df(movie.exportdata)
     except Exception as e:
         print('Error', traceback.print_exc(e),
               'quitting program in 3 seconds.', sep='\n')
         sleep(3)
         quit()
-    raw_excel = todays_movies.xlsx(todays_movies.export_df, folder)
+    raw_excel = exports.xlsx(script, exports.export_df)
     # todays_movies.xlsx_sheet()
     if raw_excel:
         print('Export successful', end='\n'*2)
@@ -64,9 +64,8 @@ def main(script):
 if __name__ == '__main__':
     script = io.Setup()
     script.filelist()
-    folder = script.rootdir
-    outfile = script.savefile
-    main(script)
+    todays_movies = io.Exports(script.savefile, script.rootdir)
+    main(script, todays_movies)
     print('Analyses Complete\nEnding Program in...')
     count_down = 3
     for count in reversed(range(1, count_down+1)):
