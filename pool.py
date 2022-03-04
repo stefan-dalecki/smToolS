@@ -4,11 +4,10 @@ from multiprocessing.sharedctypes import copy
 import threaded_processing
 
 
-def processing(script, exporty, writer, num_processes, filelist, task):
+def processing(script, exporty, num_processes, filelist, task):
     assert num_processes > 1
     assert script.filetype == 'csv'
-    # threaded_processing.main(filelist[0], True, script, exporty)
-    p = Process(target=task, args=(filelist[0], True, script, exporty, writer))
+    p = Process(target=task, args=(filelist[0], True, script, exporty))
     p.start()
     p.join()
     filelist = filelist[1:]
@@ -17,11 +16,10 @@ def processing(script, exporty, writer, num_processes, filelist, task):
             num_processes = len(filelist)
         with Pool(num_processes) as pool:
             subfiles = filelist[:num_processes]
-            bools = [script.display for i in range(num_processes)]
+            bools = [False for i in range(num_processes)]
             scripts = [script for i in range(num_processes)]
             exportys = [exporty for i in range(num_processes)]
-            writers = [writer for i in range(num_processes)]
-            pool.starmap(task, zip(subfiles, bools, scripts, exportys, writer))
+            pool.starmap(task, zip(subfiles, bools, scripts, exportys))
             pool.close()
-            poo.join()
-    filelist = filelist[num_processes:]
+            pool.join()
+        filelist = filelist[num_processes:]
