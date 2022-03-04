@@ -162,7 +162,9 @@ class Find:
         Args:
             en_string (str): entire string
             separator (str): separator of interest in entire string
-            val_name (str):
+            val_name (str): dictionary key
+            IDs (list): search strings for dictionary value
+            nf (str): answer if no value is found
 
         Returns:
             output (dict): val_name (key) and value pair
@@ -201,7 +203,7 @@ class Find:
                                         f'{protein} ({conc[:-2]})'
                             else:
                                 output = {
-                                    val_name: san_string[exist_i].strip(ID)}
+                                    val_name: str(san_string[exist_i].strip(ID))}
                                 break
             if output:
                 return output
