@@ -330,3 +330,42 @@ class Form:
             else:
                 print('Not an available option\n')
         return ans
+
+    def batching(task, script, export, batch_size, filelist):
+        """
+        Batch process movies
+
+        Analyze multiple movies simultaneously
+
+        Args:
+            task: processing function
+            script: script class object
+            export: export class object
+            num_processes (int): batch size
+            filelist (list): list of files to analyze
+
+        Returns:
+            concatenated dataframe
+
+        Raises:
+            Assert Error: if the number of processes is <= 1
+            Assert Error: if filetype is not 'csv'
+
+        """
+        
+        from multiprocessing import Pool
+
+
+        assert batch_size > 1
+        assert script.filetype == 'csv'
+        dfs = []
+        while filelist:
+            if batch_size >= len(filelist):
+                batch_size = len(filelist)
+            with Pool(batch_size) as pool:
+                scripts = [script for i in range(batch_size)]
+                dfs += list(pool.starmap(task, zip(filelist, scripts)))
+                pool.close()
+                pool.join()
+            filelist = filelist[batch_size:]
+        return pd.concat(dfs, ignore_index=True)
