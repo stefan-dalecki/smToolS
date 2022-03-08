@@ -22,7 +22,7 @@ class OneCompExpDecay:
         Args:
             self: placeholder variable
             movie: movie class object
-            kinetic: kinetic of interest
+            kinetic: kinetic class object
             display (bool): choice to display the resulting fit data
 
         Returns:
@@ -168,7 +168,7 @@ class TwoCompExpDecay:
         estimation = f.Calc.e_estimation(movie.bsldf)
         popt, pcov, r2, ssqr = FitFunctions.curve(movie, movie.bsldf,
                                                   TwoCompExpDecay.equation,
-                                                  [1, estimation, estimation],
+                                                  [0.75, 59.5, 143],
                                                   TwoCompExpDecay.bounds(),
                                                   TwoCompExpDecay.output,
                                                   kinetic)
@@ -316,8 +316,7 @@ class Alt_TwoCompExpDecay:
         estimation = f.Calc.e_estimation(movie.bsldf)
         popt, pcov, r2, ssqr = FitFunctions.curve(movie, movie.bsldf,
                                                   Alt_TwoCompExpDecay.equation,
-                                                  [0.6, 0.4, estimation,
-                                                   estimation],
+                                                  [0.75, 0.25, 59.5, 143],
                                                   Alt_TwoCompExpDecay.bounds(),
                                                   Alt_TwoCompExpDecay.output,
                                                   kinetic)
@@ -432,7 +431,7 @@ class Alt_TwoCompExpDecay:
             none
 
         """
-
+        print(f'{popt[0]=}, {popt[1]=}')
         d.ExpDecay.twocomp(movie, df,
                            popt[0]/(popt[0]+popt[1]),
                            popt[2], cov[2],
@@ -609,7 +608,7 @@ class OneCompRayleigh:
 
             """
 
-            estimation = [2.5e-5]
+            estimation = [1e-5]
             popt, pcov, r2, sumsqr = FitFunctions.curve(movie, movie.raydf,
                                                         OneCompRayleigh.equation,
                                                         estimation,
@@ -635,7 +634,7 @@ class OneCompRayleigh:
 
             """
 
-            return t*np.exp(-t**2/(2*sig**2))/sig**2
+            return (t*np.exp(-t**2/(2*sig**2)))/sig**2
 
         def bounds():
             """
@@ -692,7 +691,7 @@ class TwoCompRayleigh:
 
         """
 
-        estimation = [3e-3, 3e-3, 1e-5, 1e-5]
+        estimation = [7e-3, 2.7e-3, 2.87e-5, 9.33e-6]
         popt, pcov, r2, sumsqr = FitFunctions.curve(movie, movie.raydf,
                                                     TwoCompRayleigh.equation,
                                                     estimation,
@@ -751,6 +750,7 @@ class TwoCompRayleigh:
             cov[0], cov[1] = cov[1], cov[0]
             popt[2], popt[3] = popt[3], popt[2]
             cov[2], cov[3] = cov[3], cov[2]
+        popt = [round(i, 6) for i in popt]
         movie.exportdata.update({f'{kinetic.name} Maj Frac (%)':
                                 popt[0]/(popt[0]+popt[1])*100,
                                 f'{kinetic.name} Maj Frac Cov': cov[0],
