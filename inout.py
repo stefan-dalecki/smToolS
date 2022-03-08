@@ -39,10 +39,15 @@ class Setup:
         self.rootdir = filedialog.askdirectory()
         print(self.rootdir)
         self.savefile = input('\nName your output file: ')
-        brightmethod_options = ['manual', 'auto']
-        self.brightmethod = f.Form.userinput('brigthness thresholding method',
-                                             brightmethod_options)
-        self.display = f.Form.inputbool('\nDisplay figures? (y/n): ')
+        self.parallel = f.Form.inputbool('\nProcess multiple files at once? (y/n): ')
+        if self.parallel:
+            self.brightmethod = 'auto'
+            self.display = False
+        else:
+            brightmethod_options = ['manual', 'auto']
+            self.brightmethod = f.Form.userinput('brigthness thresholding method',
+                                                 brightmethod_options)
+            self.display = f.Form.inputbool('\nDisplay figures? (y/n): ')
 
     def filelist(self):
         """
@@ -187,7 +192,7 @@ class Movie:
     """
 
     def __init__(self, name, file,
-                 tracks, frame_cutoff=15):
+                 tracks, frame_cutoff=5):
         """
         Establish movie file parameters
 
@@ -215,7 +220,7 @@ class Movie:
         self.replicate = {'Replicate': name[-2:]}
         self.ND = f.Find.identifiers(name, '_', 'ND Filter', ['nd'], '08')
         self.pixel_size = 0.000024
-        self.framestep_size = 0.021
+        self.framestep_size = 0.0217
         self.frame_cutoff = frame_cutoff
         self.fig_title = f.Form.catdict(self.protein_info, self.ND,
                                         self.gasket, self.replicate)
@@ -258,7 +263,7 @@ class Exports:
         self.name = name
         self.exportpath = rootdir+f'\\{self.name}.xlsx'
 
-    def start_df(self, exportdata, rootdir):
+    def start_df(self, exportdata):
         start = pd.DataFrame(columns=list(exportdata.keys()))
         self.export_df = start
 
@@ -314,6 +319,12 @@ class Exports:
                     **to_excel_kwargs)
         writer.save()
 
+    def writer(path, df, mode='w', engine='openpyxl', if_sheet_exists=None,
+               sheet_name='Raw'):
+        with pd.ExcelWriter(path, mode=mode, engine=engine,
+                            if_sheet_exists=if_sheet_exists) as writer:
+            df.to_excel(writer, sheet_name=sheet_name)
+
     def build_df(self, dict):
         """
         Generates the export dataframe
@@ -352,8 +363,10 @@ class Exports:
 
         """
 
+        full_file = script.rootdir+f'\\{self.name}'
         self.fidf = df
-        df.to_csv(rootdir+f'\\{self.name}.csv', index=False)
+        csv_doc = df.to_csv(full_file+'.xlsx', index=False)
+        return csv_doc
 
     def xlsx(self, script, df):
         """
@@ -362,8 +375,8 @@ class Exports:
         Tabs can be generated within this file to make it more digestable
 
         Args:
+            script: script class object
             df (df): final dataframe with all calculated data
-            rootdir (string): directory location of save file
 
         Returns:
             xlsx file
@@ -375,8 +388,12 @@ class Exports:
 
         full_file = script.rootdir+f'\\{self.name}'
         self.fidf = df
-        df.to_excel(full_file+'.xlsx', index=False, sheet_name='Raw')
-        return full_file
+        try:
+            excel_doc = df.to_excel(full_file+'.xlsx', index=False, sheet_name='Raw')
+            print('Export Successful')
+            return excel_doc
+        except Exception:
+            print('Export Failed')
 
     def figure(rootdir, name):
         exdir = rootdir+'\Figures\\'
