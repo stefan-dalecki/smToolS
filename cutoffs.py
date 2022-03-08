@@ -115,7 +115,7 @@ class Brightness:
             grp_df = rm_df.groupby('Trajectory') \
                 .filter(lambda x: len(x) > movie.frame_cutoff) \
                 .reset_index(drop=True)
-            if f.Calc.traj_count(grp_df) > 200:
+            if f.Calc.traj_count(grp_df) > 150:
                 break
             else:
                 groups += 1
