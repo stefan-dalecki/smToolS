@@ -34,11 +34,11 @@ class Histogram:
         """
 
         plt.hist(list, bins, range=[min(list), max(list)],
-                 edgecolor = 'black', linewidth = 1, color = 'white')
+                 edgecolor='white', linewidth=1, color='black')
         plt.title(title)
         plt.xlabel(x_label)
         plt.ylabel(y_label)
-        plt.grid(axis='x', color = 'grey')
+        plt.grid(axis='x', color='grey')
         plt.tight_layout()
         plt.show(block=True)
 
@@ -67,13 +67,13 @@ class Histogram:
         """
 
         n, bins, patches = plt.hist(list, bins, range=[min(list), max(list)],
-                                    edgecolor = 'black', linewidth = 1,
-                                    color = 'white')
+                                    edgecolor='white', linewidth=2,
+                                    color='black')
         plt.title(title)
         plt.xlabel(x_label)
         plt.ylabel(y_label)
-        plt.vlines(low_cut, 0, n.max(), color='orange')
-        plt.vlines(high_cut, 0, n.max(), color='orange')
+        plt.vlines(low_cut, 0, n.max(), colors='mediumorchid', linewidth=2)
+        plt.vlines(high_cut, 0, n.max(), colors='mediumorchid', linewidth=2)
         plt.tight_layout()
         plt.show(block=True)
 
@@ -110,7 +110,7 @@ class Scatter:
         assert df.shape[1] >= 2, 'Dataframe doesn not have at least 2 columns'
         x = df.iloc[:, 0].values
         y = df.iloc[:, 1].values
-        plt.scatter(x, y, s=2, alpha=0.5, color = 'slateblue')
+        plt.scatter(x, y, s=2, alpha=1, color='black')
         plt.title(title)
         plt.xlabel(x_label)
         plt.ylabel(y_label)
@@ -134,15 +134,17 @@ class ExpDecay:
         val1 = np.round(tau1*movie.framestep_size, 3)
         var1 = np.format_float_scientific(cov1, precision=1, exp_digits=2)
         r_val = round(r2, 6)
-        plt.scatter(x_data, y_data, s=2, alpha=0.5, color='black',
+        plt.scatter(x_data, y_data, s=2, alpha=1, color='black',
                     label=f'Data: n = {f.Calc.traj_count(movie.df)}')
         plt.xlabel(x_label)
         plt.ylabel(y_label)
         plt.title(title + '--- One Comp Exp Decay ---')
         plt.plot(x_data, equation(x_data, tau1),
-                 'r--', label=f'{kinetic.name}: {val1} {kinetic.unit}\n'
+                 label=f'{kinetic.name}: {val1} {kinetic.unit}\n'
                  + f' Cov: {var1}\n'
-                 + f'R\u00b2: {r_val}', color='darkorange', linewidth=2)
+                 + f'R\u00b2: {r_val}',
+                 linestyle='dashed',
+                 color='mediumorchid', linewidth=2, alpha=0.9)
         plt.legend(loc='upper right')
         plt.tight_layout()
         plt.show()
@@ -158,26 +160,28 @@ class ExpDecay:
         var1 = np.format_float_scientific(cov1, precision=1, exp_digits=2)
         var2 = np.format_float_scientific(cov2, precision=1, exp_digits=2)
         r_val = round(r2, 6)
-        plt.scatter(x_data, y_data, s=2, alpha=0.5,
+        plt.scatter(x_data, y_data, s=2, alpha=1, color='black',
                     label=f'Data: n = {f.Calc.traj_count(movie.df)}')
         plt.xlabel(x_label)
         plt.ylabel(y_label)
         plt.title(movie.fig_title + '--- Two Comp Exp Decay ---')
         plt.plot(x_data, cf.TwoCompExpDecay.equation(
-            x_data, a, tau1, tau2), 'r--',
+            x_data, a, tau1, tau2),
             label=f'Maj Frac: {a1}\n'
             + f' {kinetic.name}: {val1} {kinetic.unit}\n'
             + f' Cov {var1}\n'
             + f'Min Frac: {a2}\n'
             + f' {kinetic.name}: {val2} {kinetic.unit}\n'
             + f' Cov: {var2}\n'
-            + f'R\u00b2: {r_val}')
+            + f'R\u00b2: {r_val}',
+            linestyle='dashed',
+            color='mediumorchid', linewidth=2, alpha=0.9)
         plt.legend(loc='upper right')
         plt.tight_layout()
         plt.show()
 
     def explin(movie, df, tau1, cov1, b, cov2, r2, kinetic,
-               title=None, x_label=None, y_label=None, legend=None):
+               title=None, x_label=None, y_label=None):
         x_data = df.iloc[:, 0].values.astype(float)
         y_data = df.iloc[:, 1].values.astype(float)
         val1 = round(tau1*movie.framestep_size, 4)
@@ -186,50 +190,76 @@ class ExpDecay:
         var1 = np.format_float_scientific(cov1, precision=1, exp_digits=2)
         var2 = np.format_float_scientific(cov2, precision=1, exp_digits=2)
         r_val = round(r2, 6)
-        plt.scatter(x_data, y_data, s=2, alpha=0.5,
+        plt.scatter(x_data, y_data, s=2, alpha=1, color='black',
                     label=f'Data: n = {f.Calc.traj_count(movie.df)}')
         plt.xlabel(x_label)
         plt.ylabel(y_label)
         plt.title(title + '--- Exp and Lin Decay ---')
         plt.plot(x_data, cf.ExpLinDecay.equation(
-            x_data, tau1, b), 'r--',
+            x_data, tau1, b),
             label=f'Exp {kinetic.name}: {val1} {kinetic.unit}\n'
             + f' Exp Cov:{var1}\n'
             + f'Lin {kinetic.name}: {val2} frames\n'
             + f' Lin Cov: {var2}\n'
-            + f'R\u00b2: {r_val}')
+            + f'R\u00b2: {r_val}',
+            linestyle='dashed',
+            color='mediumorchid', linewidth=2, alpha=0.9)
         plt.legend(loc='upper right')
         plt.tight_layout()
         plt.show()
 
 
-# class Rayleigh:
-#     def twopart(self, df, a, a_cov, b, b_cov,
-#                        sig1, sig1_cov, sig2, sig2_cov, r2,
-#                        title=None, x_label=None, y_label=None, legend=None):
-#         x_data = df.iloc[:, 0].values
-#         y_data = df.iloc[:, 1].values
-#         raypop1, raypop2 = a/(a+b), b/(a+b)
-#         raydiffcoeff1 = round(1e8*sig1**2/(2*self.framestep_size), 4)
-#         raydiffcoeff2 = round(1e8*sig2**2/(2*self.framestep_size), 4)
-#         vara = np.format_float_scientific(a_cov, precision=1, exp_digits=2)
-#         varb = np.format_float_scientific(b_cov, precision=1, exp_digits=2)
-#         varsig1 = np.format_float_scientific(
-#             sig1_cov, precision=1, exp_digits=2)
-#         varsig2 = np.format_float_scientific(
-#             sig2_cov, precision=1, exp_digits=2)
-#         r_val = round(r2, 6)
-#         plt.scatter(x_data, y_data, s=2, alpha=0.5,
-#                     label=f'Data: n = {Formulas.traj_count(self.df)}\n\
-#                        R2: {r_val}')
-#         plt.xlabel(x_label)
-#         plt.ylabel(y_label)
-#         plt.title(title)
-#         plt.plot(x_data, Fits.twopartRayeigh(
-#             x_data, a, b, sig1, sig2), 'r--',
-#             label=f'Maj Fraction: {raypop1} +/- {vara}\n \
-#             Diff Coeff: {raydiffcoeff1} +/- {varsig1} um^2/sec\n\
-#             Min Frac: {raypop2} +/- {varb}\n \
-#             Diff Coeff: {raydiffcoeff2} +/- {varsig2} um^2/sec')
-#         plt.legend(loc='upper right')
-#         plt.show()
+class Rayleigh:
+    def onecomp(movie, df, a, sig, sig_cov, r2, kinetic,
+                       title=None, x_label=None, y_label=None):
+        x_data = df.iloc[:, 0].values
+        y_data = df.iloc[:, 1].values
+        raydiffcoeff = round(1e8*sig**2/(2*movie.framestep_size), 4)
+        varsig = np.format_float_scientific(
+            sig_cov, precision=1, exp_digits=2)
+        r_val = round(r2, 6)
+        plt.scatter(x_data, y_data, s=4, alpha=1, color='black',
+                    label=f'Data: n = {f.Calc.traj_count(movie.df)}')
+        plt.xlabel(x_label)
+        plt.ylabel(y_label)
+        plt.title(title + '--- One Component Rayleigh ---')
+        plt.plot(x_data, cf.OneCompRayleigh.equation(
+            x_data, a, sig),
+            label=f'{kinetic.name}: {raydiffcoeff} {kinetic.unit}\n'
+            + f' Cov {varsig}\n'
+            + f'R\u00b2: {r_val}',
+            linestyle='dashed',
+            color='mediumorchid', linewidth=2, alpha=0.9)
+        plt.legend(loc='upper right')
+        plt.show()
+
+    def twocomp(movie, df, a, b, sig1, sig1_cov, sig2, sig2_cov, r2, kinetic,
+                       title=None, x_label=None, y_label=None):
+        x_data = df.iloc[:, 0].values
+        y_data = df.iloc[:, 1].values
+        raypop1, raypop2 = round(a/(a+b), 4), round(b/(a+b), 4)
+        raydiffcoeff1 = round(1e8*sig1**2/(2*movie.framestep_size), 4)
+        raydiffcoeff2 = round(1e8*sig2**2/(2*movie.framestep_size), 4)
+        varsig1 = np.format_float_scientific(
+            sig1_cov, precision=1, exp_digits=2)
+        varsig2 = np.format_float_scientific(
+            sig2_cov, precision=1, exp_digits=2)
+        r_val = round(r2, 6)
+        plt.scatter(x_data, y_data, s=4, alpha=1, color='black',
+                    label=f'Data: n = {f.Calc.traj_count(movie.df)}')
+        plt.xlabel(x_label)
+        plt.ylabel(y_label)
+        plt.title(title + '--- Two Component Rayleigh ---')
+        plt.plot(x_data, cf.TwoCompRayleigh.equation(
+            x_data, a, b, sig1, sig2),
+            label=f'Maj Frac: {raypop1}\n'
+            + f' {kinetic.name}: {raydiffcoeff1} {kinetic.unit}\n'
+            + f' Cov {varsig1}\n'
+            + f'Min Frac: {raypop2}\n'
+            + f' {kinetic.name}: {raydiffcoeff2} {kinetic.unit}\n'
+            + f' Cov: {varsig2}\n'
+            + f'R\u00b2: {r_val}',
+            linestyle='dashed',
+            color='mediumorchid', linewidth=2, alpha=0.9)
+        plt.legend(loc='upper right')
+        plt.show()
