@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 
 class Calc:
@@ -249,6 +250,10 @@ class Form:
                 catdict += ' // ' + str + '\n'
             else:
                 catdict += str
+        if catdict.endswith('\n'):
+            pass
+        else:
+            catdict += '\n'
         return catdict
 
     def reorder(df, col_name, loc):
@@ -352,7 +357,7 @@ class Form:
             Assert Error: if filetype is not 'csv'
 
         """
-        
+
         from multiprocessing import Pool
 
 
