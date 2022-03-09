@@ -2,7 +2,7 @@ import inout as io
 import cutoffs as cut
 import curvefitting as cf
 import kinetics as k
-import newpool
+import formulas as f
 import traceback
 import os
 from time import sleep
