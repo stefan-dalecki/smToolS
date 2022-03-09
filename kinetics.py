@@ -146,8 +146,8 @@ class RayD:
 
         self.name = 'RayDifCoef'
         self.unit = '\u03BCm\u00b2/sec'
-        self.x_label = None
-        self.y_label = None
+        self.x_label = f'Diffusion Coefficients ({self.unit})'
+        self.y_label = 'Frequency (#)'
         movie.raydf = RayD.format(movie, list, display)
 
     def format(movie, list, display):
