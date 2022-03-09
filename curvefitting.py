@@ -431,7 +431,7 @@ class Alt_TwoCompExpDecay:
             none
 
         """
-        print(f'{popt[0]=}, {popt[1]=}')
+
         d.ExpDecay.twocomp(movie, df,
                            popt[0]/(popt[0]+popt[1]),
                            popt[2], cov[2],
@@ -608,15 +608,17 @@ class OneCompRayleigh:
 
             """
 
-            estimation = [1e-5]
+            estimation = [1, 1e-5]
             popt, pcov, r2, sumsqr = FitFunctions.curve(movie, movie.raydf,
                                                         OneCompRayleigh.equation,
                                                         estimation,
                                                         OneCompRayleigh.bounds(),
                                                         OneCompRayleigh.output,
                                                         kinetic)
+            if display:
+                OneCompRayleigh.figure(movie, movie.raydf, popt, pcov, r2, kinetic)
 
-        def equation(t, sig):
+        def equation(t, a, sig):
             """
             Rayeigh probability distribution
 
@@ -634,13 +636,13 @@ class OneCompRayleigh:
 
             """
 
-            return (t*np.exp(-t**2/(2*sig**2)))/sig**2
+            return a*((t*np.exp(-t**2/(2*sig**2)))/sig**2)
 
         def bounds():
             """
             One component Rayleigh bounds
 
-            no limits to sigma value
+            no limits to sigma or population value
 
             Args:
                 none
@@ -653,21 +655,47 @@ class OneCompRayleigh:
 
             """
 
-            return [(-np.inf), (np.inf)]
+            return [(-np.inf, -np.inf), (np.inf, np.inf)]
 
-        def output(movie, popt, cov, r2, kinetic):
+        def output(movie, popt, pcov, r2, kinetic):
             movie.exportdata.update({f'{kinetic.name} ({kinetic.unit})':
-                                     1e8*popt[0]**2/(2*movie.framestep_size),
-                                     f'{kinetic.name} Cov': cov[0],
+                                     1e8*popt[1]**2/(2*movie.framestep_size),
+                                     f'{kinetic.name} Cov': pcov[1],
                                      'R\u00b2 OneRay': r2})
 
+        def figure(movie, df, popt, pcov, r2, kinetic):
+            """
+            Two part Rayleigh figure
+
+            Overlays fit line onto a decay scatter plot
+
+            Args:
+                movie: movie class object
+                df (df): dataframe for scatter plot
+                popt (list): parameter values
+                pcov (list): parameter covariance
+                r2 (float): goodness of fit
+                kinetic: kinetic class identity
+
+            Returns:
+                scatter plot overlayed with line
+
+            Raises:
+                none
+
+            """
+
+            d.Rayleigh.onecomp(movie, df,
+                              popt[0], popt[1], pcov[1], r2, kinetic,
+                              title=movie.fig_title,
+                              x_label=kinetic.x_label,
+                              y_label=kinetic.y_label)
 
 class TwoCompRayleigh:
     """
     Two component Rayleigh fitting workflow
 
     Workflow for fitting including equation, bounds, outputs, and figure
-    ***incomplete***
 
     """
 
@@ -698,6 +726,10 @@ class TwoCompRayleigh:
                                                     TwoCompRayleigh.bounds(),
                                                     TwoCompRayleigh.output,
                                                     kinetic)
+        if popt[0] != np.nan:
+            if display:
+                TwoCompRayleigh.figure(movie, movie.raydf,
+                                       popt, pcov, r2, kinetic)
 
     def equation(t, a, b, sig1, sig2):
         """
@@ -745,12 +777,31 @@ class TwoCompRayleigh:
         return [(0, 0, -np.inf, -np.inf), (np.inf, np.inf, np.inf, np.inf)]
 
     def output(movie, popt, cov, r2, kinetic):
+        """
+        Two component Rayleigh output
+
+        Outputs are selected based of the kinetic chosen
+
+        Args:
+            self: movie class object
+            popt (list): parameter values
+            pcov (list): parameter covariance
+            r2 (float): goodness of fit
+            kinetic: input kinetic class
+
+        Returns:
+            none
+
+        Raises:
+            none
+
+        """
+
         if popt[0] < popt[1]:
             popt[0], popt[1] = popt[1], popt[0]
             cov[0], cov[1] = cov[1], cov[0]
             popt[2], popt[3] = popt[3], popt[2]
             cov[2], cov[3] = cov[3], cov[2]
-        popt = [round(i, 6) for i in popt]
         movie.exportdata.update({f'{kinetic.name} Maj Frac (%)':
                                 popt[0]/(popt[0]+popt[1])*100,
                                 f'{kinetic.name} Maj Frac Cov': cov[0],
@@ -765,6 +816,36 @@ class TwoCompRayleigh:
                                  f'{kinetic.name} Min Cov': cov[3],
                                  'R\u00b2 TwoRay': r2})
 
+    def figure(movie, df, popt, pcov, r2, kinetic):
+        """
+        Two part Rayleigh figure
+
+        Overlays fit line onto a decay scatter plot
+
+        Args:
+            movie: movie class object
+            df (df): dataframe for scatter plot
+            popt (list): parameter values
+            pcov (list): parameter covariance
+            r2 (float): goodness of fit
+            kinetic: kinetic class identity
+
+        Returns:
+            scatter plot overlayed with line
+
+        Raises:
+            none
+
+        """
+
+        d.Rayleigh.twocomp(movie, df,
+                          popt[0], popt[1],
+                          popt[2], pcov[2],
+                          popt[3], pcov[3],
+                          r2, kinetic,
+                          title=movie.fig_title,
+                          x_label=kinetic.x_label,
+                          y_label=kinetic.y_label)
 
 class FitFunctions:
     """
