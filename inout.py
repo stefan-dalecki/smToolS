@@ -192,7 +192,7 @@ class Movie:
     """
 
     def __init__(self, name, file,
-                 tracks, frame_cutoff=5):
+                 tracks, frame_cutoff=10):
         """
         Establish movie file parameters
 
