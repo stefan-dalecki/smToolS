@@ -39,7 +39,6 @@ class Histogram:
         plt.xlabel(x_label)
         plt.ylabel(y_label)
         plt.grid(axis='x', color='grey')
-        plt.tight_layout()
         plt.show(block=True)
 
     def lines(list, bins, low_cut, high_cut,
@@ -74,7 +73,6 @@ class Histogram:
         plt.ylabel(y_label)
         plt.vlines(low_cut, 0, n.max(), colors='mediumorchid', linewidth=2)
         plt.vlines(high_cut, 0, n.max(), colors='mediumorchid', linewidth=2)
-        plt.tight_layout()
         plt.show(block=True)
 
 
@@ -115,7 +113,6 @@ class Scatter:
         plt.xlabel(x_label)
         plt.ylabel(y_label)
         plt.legend(loc='upper right')
-        plt.tight_layout()
         plt.show()
 
 
@@ -146,7 +143,6 @@ class ExpDecay:
                  linestyle='dashed',
                  color='mediumorchid', linewidth=2, alpha=0.9)
         plt.legend(loc='upper right')
-        plt.tight_layout()
         plt.show()
 
     def twocomp(movie, df, a, tau1, cov1, tau2, cov2, r2, kinetic,
@@ -177,7 +173,6 @@ class ExpDecay:
             linestyle='dashed',
             color='mediumorchid', linewidth=2, alpha=0.9)
         plt.legend(loc='upper right')
-        plt.tight_layout()
         plt.show()
 
     def explin(movie, df, tau1, cov1, b, cov2, r2, kinetic,
@@ -205,7 +200,6 @@ class ExpDecay:
             linestyle='dashed',
             color='mediumorchid', linewidth=2, alpha=0.9)
         plt.legend(loc='upper right')
-        plt.tight_layout()
         plt.show()
 
 
