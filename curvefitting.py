@@ -774,7 +774,6 @@ class OneCompRayleigh:
                                                         OneCompRayleigh.bounds(),
                                                         OneCompRayleigh.output,
                                                         kinetic)
-            print(f'{popt=}')
             if display:
                 OneCompRayleigh.figure(movie, movie.raydf, popt, pcov, r2, kinetic)
 
@@ -815,7 +814,7 @@ class OneCompRayleigh:
 
             """
 
-            return [(-np.inf, -np.inf), (np.inf, np.inf)]
+            return [(0, 0), (np.inf, np.inf)]
 
         def output(movie, popt, pcov, r2, kinetic):
             movie.exportdata.update({f'{kinetic.name} ({kinetic.unit})':
@@ -880,16 +879,17 @@ class TwoCompRayleigh:
         """
 
         estimation = [7e-3, 2.7e-3, 2.87e-5, 9.33e-6]
-        popt, pcov, r2, sumsqr = FitFunctions.curve(movie, movie.raydf,
+        popt, pcov, r2, sumsqr = FitFunctions.recurve(movie, movie.raydf,
                                                     TwoCompRayleigh.equation,
                                                     estimation,
                                                     TwoCompRayleigh.bounds(),
                                                     TwoCompRayleigh.output,
                                                     kinetic)
         if display:
-            if popt != np.nan:
-                TwoCompRayleigh.figure(movie, movie.raydf,
-                                       popt, pcov, r2, kinetic)
+            try:
+                TwoCompRayleigh.figure(movie, movie.raydf, popt, pcov, r2, kinetic)
+            except Exception:
+                pass
 
     def equation(t, a, b, sig1, sig2):
         """
@@ -934,7 +934,7 @@ class TwoCompRayleigh:
 
         """
 
-        return [(0, 0, -np.inf, -np.inf), (np.inf, np.inf, np.inf, np.inf)]
+        return [(0, 0, 0, 0), (np.inf, np.inf, np.inf, np.inf)]
 
     def output(movie, popt, cov, r2, kinetic):
         """
@@ -1043,9 +1043,7 @@ class ThreeCompRayleigh:
                                                     ThreeCompRayleigh.output,
                                                     kinetic)
         if display:
-            if popt != np.nan:
-                TwoCompRayleigh.figure(movie, movie.raydf,
-                                       popt, pcov, r2, kinetic)
+            TwoCompRayleigh.figure(movie, movie.raydf, popt, pcov, r2, kinetic)
 
     def equation(t, a, b, c, sig1, sig2, sig3):
         """
@@ -1091,7 +1089,7 @@ class ThreeCompRayleigh:
 
         """
 
-        return [(0, 0, 0, -np.inf, -np.inf, -np.inf),
+        return [(0, 0, 0, 0, 0, 0),
                 (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf)]
 
     def output(movie, popt, cov, r2, kinetic):
@@ -1175,8 +1173,8 @@ class FitFunctions:
 
     """
 
-    def guess(movie, df, equation, p0, limits, output_method, kinetic,
-              method='trf'):
+    def recurve(movie, df, equation, p0, limits, output_method, kinetic,
+              method='trf', count=1):
         """
         Curve fitting using non linear least squares
 
@@ -1210,17 +1208,22 @@ class FitFunctions:
             else:
                 popt, pcov = curve_fit(equation, x_data, y_data,
                                        p0=p0, bounds=limits)
-            popt, pcov = curve_fit(equation, x_data, y_data,
-                                   p0=p0, bounds=limits)
             pcov = (np.sqrt(np.diag(pcov)))
             res = y_data - equation(x_data, *popt)
             sum_sqr_res = np.sum(res**2)
             sum_sqr_tot = np.sum((y_data-np.mean(y_data))**2)
             r2 = 1 - (sum_sqr_res / sum_sqr_tot)
-            # output_method(movie, popt, pcov, r2, kinetic)
-            return popt, pcov, r2, sum_sqr_res
+            if count < 10 and r2 < 0.99:
+                count +=1
+                educated_guess = [M+random.uniform(-2*SD, 2*SD) for \
+                                  M, SD in zip(popt, pcov)]
+                FitFunctions.recurve(movie, df, equation, educated_guess,
+                                     limits, output_method, kinetic,
+                                     count=count)
+            else:
+                output_method(movie, popt, pcov, r2, kinetic)
+                return popt, pcov, r2, sum_sqr_res
         except Exception as e:
-            print(e)
             return np.nan, np.nan, np.nan, np.nan
 
     def curve(movie, df, equation, p0, limits, output_method, kinetic,
