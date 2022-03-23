@@ -1,8 +1,8 @@
-import inout as io
 import cutoffs as cut
 import curvefitting as cf
-import kinetics as k
 import formulas as f
+import inout as io
+import kinetics as k
 import traceback
 import os
 from time import sleep
@@ -45,6 +45,7 @@ def main(file, script):
         cf.ExpLinDecay(movie, BSL, script.display)
         cf.OneCompRayleigh(movie, Ray, script.display)
         cf.TwoCompRayleigh(movie, Ray, script.display)
+        # cf.ThreeCompRayleigh(movie, Ray, script.display)
 
     except Exception as e:
         print('Error', traceback.print_exc(e),
