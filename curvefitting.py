@@ -3,6 +3,7 @@ import numpy as np
 import display as d
 from scipy.optimize import curve_fit
 from scipy import stats
+import random
 
 
 class OneCompExpDecay:
@@ -879,7 +880,7 @@ class TwoCompRayleigh:
         """
 
         estimation = [7e-3, 2.7e-3, 2.87e-5, 9.33e-6]
-        popt, pcov, r2, sumsqr = FitFunctions.recurve(movie, movie.raydf,
+        popt, pcov, r2, sumsqr = FitFunctions.curve(movie, movie.raydf,
                                                     TwoCompRayleigh.equation,
                                                     estimation,
                                                     TwoCompRayleigh.bounds(),
@@ -1213,17 +1214,18 @@ class FitFunctions:
             sum_sqr_res = np.sum(res**2)
             sum_sqr_tot = np.sum((y_data-np.mean(y_data))**2)
             r2 = 1 - (sum_sqr_res / sum_sqr_tot)
-            if count < 10 and r2 < 0.99:
+            if count > 10 and r2 < 0.99:
                 count +=1
                 educated_guess = [M+random.uniform(-2*SD, 2*SD) for \
                                   M, SD in zip(popt, pcov)]
-                FitFunctions.recurve(movie, df, equation, educated_guess,
+                popt, pcov, r2, sum_sqr = FitFunctions.curve(movie, df, equation, educated_guess,
                                      limits, output_method, kinetic,
                                      count=count)
             else:
                 output_method(movie, popt, pcov, r2, kinetic)
                 return popt, pcov, r2, sum_sqr_res
         except Exception as e:
+            print(f'Exception found\n{e}')
             return np.nan, np.nan, np.nan, np.nan
 
     def curve(movie, df, equation, p0, limits, output_method, kinetic,
