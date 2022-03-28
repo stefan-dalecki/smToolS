@@ -72,7 +72,7 @@ class Calc:
         estimation = estimation.iloc[:, 0].values[0]
         return estimation
 
-    def f_modeltest():
+    def f_modeltest(ss1, ss2, degfre1, degre2):
         """
         F-Test to Compare Two Models
 
@@ -81,7 +81,7 @@ class Calc:
         Args:
             sumsqr1 (float): residual sum of squares for simpler model
             sumsqr2 (float): residual sum of squares for complex model
-            degfr1 (float): degrees of freedom for simpler model
+            degfre1 (float): degrees of freedom for simpler model
             degfre2 (float): degrees of freedom for complex model
 
         Returns:
@@ -91,13 +91,10 @@ class Calc:
             error: degrees of freedom in model 2 are less than model 1
 
         """
-        # try:
-        #     f = ((sumsqr1 - sumsqr2) / (degfr1 - degfr2)) / \
-        #         (sumsqr2 / degfr2)
-        #     return f
-        # except degfr1 > degfr2:
-        #     print('Models are out of order.')
-        pass
+        assert df1 > df2, 'Simpler model is after the complex model'
+        f_stat = ((ss1 - ss2)(df1 - df2))/(ss2/df2)
+        return f_stat
+
 
     def dof(lam=532, incidence=69, n2=1.33, n1=1.515):
         """
