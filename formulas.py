@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 
 class Calc:
@@ -28,7 +29,7 @@ class Calc:
 
         """
 
-        traj_count = df['Trajectory'].nunique()
+        traj_count = df["Trajectory"].nunique()
         return traj_count
 
     def distance(x1, y1, x2, y2):
@@ -48,7 +49,7 @@ class Calc:
 
         """
 
-        distance = (((x2-x1)**2)+((y2-y1)**2))**(1/2)
+        distance = (((x2 - x1) ** 2) + ((y2 - y1) ** 2)) ** (1 / 2)
         return distance
 
     def e_estimation(df):
@@ -68,11 +69,11 @@ class Calc:
 
         """
 
-        estimation = df.iloc[(df.iloc[:, 1]-(1/np.exp(1))).abs().argsort()[:1]]
+        estimation = df.iloc[(df.iloc[:, 1] - (1 / np.exp(1))).abs().argsort()[:1]]
         estimation = estimation.iloc[:, 0].values[0]
         return estimation
 
-    def f_modeltest(ss1, ss2, degfre1, degre2):
+    def f_modeltest(ss1, ss2, degfre1, degfre2, alpha=0.05):
         """
         F-Test to Compare Two Models
 
@@ -91,12 +92,20 @@ class Calc:
             error: degrees of freedom in model 2 are less than model 1
 
         """
-        assert df1 > df2, 'Simpler model is after the complex model'
-        f_stat = ((ss1 - ss2)(df1 - df2))/(ss2/df2)
-        return f_stat
 
+        assert degfre1 > degfre2, "Simpler model is after the complex model"
+        if degfre1 == degfre2:
+            f_stat = ss1 / ss2
+        else:
+            f_stat = ((ss1 - ss2)(degfre1 - degfre2)) / (ss2 / degfre2)
+        pcrit = stats.f.sf(f_stat, degfre1, degfre2)
+        if pcrit > alpha:
+            print("Simpler Model is better than the Complex Model")
+        elif pcrit < alpha:
+            print("Complex Model is better than the Simpler Model")
+        return pcrit
 
-    def dof(lam=532, incidence=69, n2=1.33, n1=1.515):
+    def fielddepth(lam=532, incidence=69, n2=1.33, n1=1.515):
         """
         smTIRF depth of field
 
@@ -117,7 +126,7 @@ class Calc:
         """
 
         theta = incidence * (180 / np.pi)
-        d = (lam / (4*np.pi)) * (n1**2 * (np.sin(theta))**2 - n2**2)**(-1/2)
+        d = (lam / (4 * np.pi)) * (n1**2 * (np.sin(theta)) ** 2 - n2**2) ** (-1 / 2)
         return d
 
     def lumi(I0, d, z):
@@ -139,7 +148,7 @@ class Calc:
 
         """
 
-        Iz = I0**(-z / d)
+        Iz = I0 ** (-z / d)
         return Iz
 
 
@@ -151,7 +160,7 @@ class Find:
 
     """
 
-    def identifiers(en_string, separator, val_name, IDs, nf='not found'):
+    def identifiers(en_string, separator, val_name, IDs, nf="not found"):
         """
         Identify metrics from file name
 
@@ -181,27 +190,27 @@ class Find:
                     exist = [i.find(ID) for i in san_string]
                     for exist_i, exist_val in enumerate(exist):
                         if exist_val != -1:
-                            if '-' in san_string[exist_i]:
-                                if '+' in san_string[exist_i]:
-                                    proteins = san_string[exist_i].split('+')
+                            if "-" in san_string[exist_i]:
+                                if "+" in san_string[exist_i]:
+                                    proteins = san_string[exist_i].split("+")
                                     for molecule in proteins:
-                                        conc, protein = molecule.split('-')
+                                        conc, protein = molecule.split("-")
                                         conc = conc[:-1] + conc[-1].upper()
                                         protein = protein.upper()
                                         units = conc[2:]
-                                        output[f'{val_name} ({units})'] = \
-                                            f'{protein} ({conc[:-2]})'
+                                        output[
+                                            f"{val_name} ({units})"
+                                        ] = f"{protein} ({conc[:-2]})"
                                 else:
-                                    conc, protein = san_string[exist_i].split(
-                                        '-')
+                                    conc, protein = san_string[exist_i].split("-")
                                     conc = conc[:-1] + conc[-1].upper()
                                     units = conc[2:]
                                     protein = protein.upper()
-                                    output[f'{val_name} ({units})'] = \
-                                        f'{protein} ({conc[:-2]})'
+                                    output[
+                                        f"{val_name} ({units})"
+                                    ] = f"{protein} ({conc[:-2]})"
                             else:
-                                output = {
-                                    val_name: str(san_string[exist_i].strip(ID))}
+                                output = {val_name: str(san_string[exist_i].strip(ID))}
                                 break
             if output:
                 return output
@@ -237,20 +246,20 @@ class Form:
         """
 
         inter = []
-        catdict = ' '
+        catdict = " "
         for dict in dicts:
             for val in dict.items():
-                st = ': '.join(val)
+                st = ": ".join(val)
                 inter.append(st)
         for i, str in enumerate(inter):
-            if (i+1) % 2 == 0:
-                catdict += ' // ' + str + '\n'
+            if (i + 1) % 2 == 0:
+                catdict += " // " + str + "\n"
             else:
                 catdict += str
-        if catdict.endswith('\n'):
+        if catdict.endswith("\n"):
             pass
         else:
-            catdict += '\n'
+            catdict += "\n"
         return catdict
 
     def reorder(df, col_name, loc):
@@ -273,7 +282,7 @@ class Form:
 
         assert col_name in df.columns
         col = df[col_name].values
-        df = df.drop(columns = [col_name])
+        df = df.drop(columns=[col_name])
         df.insert(loc, col_name, col)
         return df
 
@@ -295,11 +304,11 @@ class Form:
 
         """
 
-        print(f'\nAvailable options\n{list}', end = '\n'*2)
+        print(f"\nAvailable options\n{list}", end="\n" * 2)
         while True:
-            ans = input(f'From options above, select your {str}: ')
+            ans = input(f"From options above, select your {str}: ")
             if ans not in list:
-                print('Not an available option\n')
+                print("Not an available option\n")
             else:
                 break
         return ans
@@ -323,14 +332,14 @@ class Form:
 
         while True:
             ans = input(str)
-            if ans == 'y':
+            if ans == "y":
                 ans = True
                 break
-            elif ans == 'n':
+            elif ans == "n":
                 ans = False
                 break
             else:
-                print('Not an available option\n')
+                print("Not an available option\n")
         return ans
 
     def batching(task, script, export, batch_size, filelist):
@@ -357,9 +366,8 @@ class Form:
 
         from multiprocessing import Pool
 
-
         assert batch_size > 1
-        assert script.filetype == 'csv'
+        assert script.filetype == "csv"
         dfs = []
         while filelist:
             if batch_size >= len(filelist):
