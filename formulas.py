@@ -1,151 +1,106 @@
+"""Various function shortcuts"""
+
 import numpy as np
 import pandas as pd
-from scipy import stats
 
 
 class Calc:
-    """
-    Basic formulas to speed up calculations
+    """Basic formulas to speed up calculations"""
 
-    None of the math is particularly difficult but instead,
-    offered are commonly used shortcut functions
-
-    """
-
-    def traj_count(df):
-        """
-        Count trajectories in a dataframe
-
-        Quickly count the number of unique trajectories in a movie
+    @staticmethod
+    def trajectory_count(df: pd.DataFrame) -> int:
+        """Counts numbers of trajectories remaining
 
         Args:
-            df (df): dataframe containing 'Trajectory' column
+            df (pd.DataFrame): trajectory data
 
         Returns:
-            traj_count (int): number of trajectories in movie
-
-        Raises:
-            none
-
+            int: number of trajectories
         """
 
-        traj_count = df["Trajectory"].nunique()
-        return traj_count
+        trajectory_count = df["Trajectory"].nunique()
+        return trajectory_count
 
-    def distance(x1, y1, x2, y2):
-        """
-        Compute distance between two points
-
-        finds x and y values in dataframe, calculates distance between points
+    @staticmethod
+    def distance(x1: float, y1: float, x2: float, y2: float) -> float:
+        """Calulate distance between two coordinates
 
         Args:
-            x1, y1, x2, y2 (float): coordinates
+            x1 (float): x-value
+            y1 (float): y-value
+            x2 (float): x2-value
+            y2 (float): y2-value
 
         Returns:
-            traj_count (int): number of trajectories in movie
-
-        Raises:
-            none
-
+            float: distance between two coordinates
         """
 
         distance = (((x2 - x1) ** 2) + ((y2 - y1) ** 2)) ** (1 / 2)
         return distance
 
-    def e_estimation(df):
-        """
-        Estimate likely time constant
-
-        Find corresponding frame value of 1/e
+    @staticmethod
+    def e_estimation(df: pd.DataFrame) -> float:
+        """Estimate decay time constant
 
         Args:
-            df (df): bound state lifetime dataframe
+            df (pd.DataFrame): formatted BSL kinetic table
 
         Returns:
-            estimation (float): time constant estimation
-
-        Raises:
-            none
-
+            float: 1/e estimation of time constant
         """
 
         estimation = df.iloc[(df.iloc[:, 1] - (1 / np.exp(1))).abs().argsort()[:1]]
         estimation = estimation.iloc[:, 0].values[0]
         return estimation
 
-    def f_modeltest(ss1, ss2, degfre1, degfre2, alpha=0.05):
-        """
-        F-Test to Compare Two Models
-
-        test whether the addition of parameters improves the model fit
+    @staticmethod
+    def f_modeltest(ss1: float, ss2: float, degfre1: int, degfre2: int) -> float:
+        """Generate f-statistic comparing two models
 
         Args:
-            sumsqr1 (float): residual sum of squares for simpler model
-            sumsqr2 (float): residual sum of squares for complex model
-            degfre1 (float): degrees of freedom for simpler model
-            degfre2 (float): degrees of freedom for complex model
+            ss1 (float): sums squared
+            ss2 (flaot): sums square 2
+            degfre1 (int): degrees of freedom
+            degfre2 (int): degrees of freedom 2
 
         Returns:
-            f-statistic value
-
-        Raises:
-            error: degrees of freedom in model 2 are less than model 1
-
+            float: f-statistic
         """
-
         assert degfre1 > degfre2, "Simpler model is after the complex model"
-        if degfre1 == degfre2:
-            f_stat = ss1 / ss2
-        else:
-            f_stat = ((ss1 - ss2)(degfre1 - degfre2)) / (ss2 / degfre2)
-        pcrit = stats.f.sf(f_stat, degfre1, degfre2)
-        if pcrit > alpha:
-            print("Simpler Model is better than the Complex Model")
-        elif pcrit < alpha:
-            print("Complex Model is better than the Simpler Model")
-        return pcrit
+        f_stat = ((ss1 - ss2)(degfre1 - degfre2)) / (ss2 / degfre2)
+        return f_stat
 
-    def fielddepth(lam=532, incidence=69, n2=1.33, n1=1.515):
-        """
-        smTIRF depth of field
-
-        Calculate the 1/e light intensity point of the smTIRF setup
+    @staticmethod
+    def depth_of_field(lam=532, incidence=69, n2=1.33, n1=1.515) -> float:
+        """smTIRF depth of field
 
         Args:
-            lam (int): laser wavenlength in nanometers
-            incidence (float): laser incidence angle between 65.22 and 72.54
-            n1 (float): sample refractive index, default is water
-            n2 (float): coverslip refractive index, default is glass
+            lam (int, optional): laser wavelength. Defaults to 532.
+            incidence (int, optional): incidence. Defaults to 69.
+            n2 (float, optional): refractive index 2. Defaults to 1.33.
+            n1 (float, optional): refractive index. Defaults to 1.515.
 
         Returns:
-            d (float): TIRF laser depth of field (nm)
-
-        Raises:
-            none
-
+            float: microscope depth of field
         """
 
         theta = incidence * (180 / np.pi)
-        d = (lam / (4 * np.pi)) * (n1**2 * (np.sin(theta)) ** 2 - n2**2) ** (-1 / 2)
-        return d
+        depth_of_field = (lam / (4 * np.pi)) * (
+            n1**2 * (np.sin(theta)) ** 2 - n2**2
+        ) ** (-1 / 2)
+        return depth_of_field
 
-    def lumi(I0, d, z):
-        """
-        Light intensity at 'z' distance
-
-        smTIRF microscope light intensity gradient
+    @staticmethod
+    def luminescence(I0: float, d: float, z: float) -> float:
+        """Intensity at distances off of coverslip
 
         Args:
-            I0 (float): initial light intensity
-            d (float): TIRf laser depth of field (nm)
-            z (float): distance from coverslip (nm)
+            I0 (float): initial intensity
+            d (float): depth of field
+            z (float): distance from coverslip
 
         Returns:
-            Iz (float): intensity at 'z' distance
-
-        Raises:
-            none
-
+            float: intensity at z-distance
         """
 
         Iz = I0 ** (-z / d)
@@ -153,185 +108,123 @@ class Calc:
 
 
 class Find:
-    """
-    Find sub data in large data
+    """Find subset of larger group"""
 
-    example: Extract biologic features from file name
-
-    """
-
-    def identifiers(en_string, separator, val_name, IDs, nf="not found"):
-        """
-        Identify metrics from file name
-
-        Find details like protein type, gasket, replicate, and so on
+    @staticmethod
+    def identifiers(
+        full_string: str,
+        separator: str,
+        value_name: str,
+        value_search_names: list,
+        *,
+        failure: str = "not found",
+    ) -> dict:
+        """Find image attributes from file name
 
         Args:
-            en_string (str): entire string
-            separator (str): separator of interest in entire string
-            val_name (str): dictionary key
-            IDs (list): search strings for dictionary value
-            nf (str): answer if no value is found
-
-        Returns:
-            output (dict): val_name (key) and value pair
-                           two key-value pairs if multiple proteins
+            full_string (str): full string in question
+            separator (str): separator between sub string elements
+            value_name (str): value of interest
+            value_search_names (list): potential value names
+            failure (str, optional): what to return if nothing is found. Defaults to "not found".
 
         Raises:
-            Exception: keeps key (val_name) with NaN value
+            RuntimeError: nothing is found
 
+        Returns:
+            dict: search result as dictionary
         """
 
-        try:
-            output = {}
-            san_string = [i for i in en_string.lower().split(separator)]
-            for sub_i, sub_str in enumerate(san_string):
-                for ID in IDs:
-                    exist = [i.find(ID) for i in san_string]
-                    for exist_i, exist_val in enumerate(exist):
-                        if exist_val != -1:
-                            if "-" in san_string[exist_i]:
-                                if "+" in san_string[exist_i]:
-                                    proteins = san_string[exist_i].split("+")
-                                    for molecule in proteins:
-                                        conc, protein = molecule.split("-")
-                                        conc = conc[:-1] + conc[-1].upper()
-                                        protein = protein.upper()
-                                        units = conc[2:]
-                                        output[
-                                            f"{val_name} ({units})"
-                                        ] = f"{protein} ({conc[:-2]})"
-                                else:
-                                    conc, protein = san_string[exist_i].split("-")
-                                    conc = conc[:-1] + conc[-1].upper()
-                                    units = conc[2:]
-                                    protein = protein.upper()
-                                    output[
-                                        f"{val_name} ({units})"
-                                    ] = f"{protein} ({conc[:-2]})"
-                            else:
-                                output = {val_name: str(san_string[exist_i].strip(ID))}
-                                break
-            if output:
-                return output
-            else:
-                return {val_name: nf}
-        except Exception:
-            return {val_name: nf}
+        output = {}
+        separated_full_string = [i for i in full_string.lower().split(separator)]
+        for search_name in value_search_names:
+            hit_indeces = [
+                i
+                for i, val in enumerate(separated_full_string)
+                if val.find(search_name) != -1
+            ]
+            for hit_index in hit_indeces:
+                if "-" in separated_full_string[hit_index]:
+                    if "+" in separated_full_string[hit_index]:
+                        protein_descriptions = separated_full_string[hit_index].split(
+                            "+"
+                        )
+                    else:
+                        protein_descriptions = [separated_full_string[hit_index]]
+                    for protein_description in protein_descriptions:
+                        concentration, protein = protein_description.split("-")
+                        protein = protein.upper()
+                        concentration_value = concentration[:-2]
+                        concentration_units = concentration[-2:]
+                        output[
+                            f"{protein} ({concentration_units})"
+                        ] = concentration_value
+                else:
+                    output[value_name] = separated_full_string[hit_index].replace(
+                        str(search_name), ""
+                    )
+                    break
+        if not output:
+            output[value_name] = failure
+        return output
 
 
 class Form:
-    """
-    Find sub data in large data
+    """Reform already generated data"""
 
-    example: Extract biologic features from file name
-
-    """
-
-    def catdict(*dicts):
-        """
-        Concatenate dictionaries
-
-        Split dictionary key-value pairs into pairs for figure titles
+    @staticmethod
+    def reorder(df: pd.DataFrame, column_name: str, location: int) -> pd.DataFrame:
+        """Reorder dataframe columns
 
         Args:
-            *dicts (dict): key-value data
+            df (pd.DataFrame): dataframe
+            column_name (str): name of column to move
+            location (int): new column location index
 
         Returns:
-            catdict (dict): concatenated dictionary
-
-        Raises:
-            none
-
+            pd.DataFrame: rearrange dataframe
         """
 
-        inter = []
-        catdict = " "
-        for dict in dicts:
-            for val in dict.items():
-                st = ": ".join(val)
-                inter.append(st)
-        for i, str in enumerate(inter):
-            if (i + 1) % 2 == 0:
-                catdict += " // " + str + "\n"
-            else:
-                catdict += str
-        if catdict.endswith("\n"):
-            pass
-        else:
-            catdict += "\n"
-        return catdict
-
-    def reorder(df, col_name, loc):
-        """
-        Move df columns
-
-        Change the location of columns by column name and locatin index
-
-        Args:
-            col_name (str): column name
-            loc (int): index location of new column location
-
-        Returns:
-            df (df): rearranged dataframe
-
-        Raises:
-            AssertionError: column name not in df
-
-        """
-
-        assert col_name in df.columns
-        col = df[col_name].values
-        df = df.drop(columns=[col_name])
-        df.insert(loc, col_name, col)
+        assert column_name in df.columns, "Column not found"
+        column_data = df[column_name].values
+        df = df.drop(columns=[column_name])
+        df.insert(location, column_name, column_data)
         return df
 
-    def userinput(str, list):
-        """
-        User input interface
-
-        Allow user to select option from list
+    @staticmethod
+    def userinput(search_string: str, option_list: list) -> str:
+        """Allow user to choose from options
 
         Args:
-            str (str): option category
-            list (list): list of possible options
+            search_string (str): option choice
+            option_list (list): list of options
 
         Returns:
-            ans (str): option selection
-
-        Raises:
-            none
-
+            str: user choice
         """
 
-        print(f"\nAvailable options\n{list}", end="\n" * 2)
+        print(f"\nAvailable options\n{option_list}", end="\n" * 2)
         while True:
-            ans = input(f"From options above, select your {str}: ")
-            if ans not in list:
+            ans = input(f"From options above, select your {search_string}: ")
+            if ans not in option_list:
                 print("Not an available option\n")
             else:
                 break
         return ans
 
-    def inputbool(str):
-        """
-        User input boolean
-
-        Input answer is converted into boolean
+    @staticmethod
+    def inputbool(input_string: str) -> bool:
+        """User input that results in true or false
 
         Args:
-            str (str): user question
+            input_string (str): question for user
 
         Returns:
-            ans (bool): True/False response to str user question
-
-        Raises:
-            none
-
+            bool: binary decision
         """
 
         while True:
-            ans = input(str)
+            ans = input(f"\n{input_string} (y/n): ")
             if ans == "y":
                 ans = True
                 break
@@ -342,40 +235,19 @@ class Form:
                 print("Not an available option\n")
         return ans
 
-    def batching(task, script, export, batch_size, filelist):
-        """
-        Batch process movies
-
-        Analyze multiple movies simultaneously
+    @staticmethod
+    def ordinal(number: int) -> str:
+        """Convert integer to ordinal string
 
         Args:
-            task: processing function
-            script: script class object
-            export: export class object
-            num_processes (int): batch size
-            filelist (list): list of files to analyze
+            number (int): integer
 
         Returns:
-            concatenated dataframe
-
-        Raises:
-            Assert Error: if the number of processes is <= 1
-            Assert Error: if filetype is not 'csv'
-
+            str: ordinal string (i.e. 1st, 2nd, 89th, ...)
         """
-
-        from multiprocessing import Pool
-
-        assert batch_size > 1
-        assert script.filetype == "csv"
-        dfs = []
-        while filelist:
-            if batch_size >= len(filelist):
-                batch_size = len(filelist)
-            with Pool(batch_size) as pool:
-                scripts = [script for i in range(batch_size)]
-                dfs += list(pool.starmap(task, zip(filelist, scripts)))
-                pool.close()
-                pool.join()
-            filelist = filelist[batch_size:]
-        return pd.concat(dfs, ignore_index=True)
+        return "%d%s" % (
+            number,
+            "tsnrhtdd"[
+                (number / 10 % 10 != 1) * (number % 10 < 4) * (number % 10) :: 4
+            ],
+        )

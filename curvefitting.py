@@ -1,1431 +1,508 @@
-import formulas as f
+"""Fit kinetic data to models"""
+
+import itertools
+import copy
+from inspect import signature
 import numpy as np
-import display as d
-from scipy.optimize import curve_fit
 from scipy import stats
-import random
+from scipy.optimize import curve_fit
+from num2words import num2words
+import formulas as fo
+import pandas as pd
+import display as di
 
 
-class OneCompExpDecay:
-    """
-    One component exponential decay analyses
+class Model:
+    """Model template"""
 
-    Workflow for fitting including equation, bounds, outputs, and figure
+    def __init__(self) -> None:
+        """Instantiate the empty model object"""
+        self.metadata = None
+        self.movie = None
+        self.kinetic = None
+        self.model_name = None
+        self.equation = None
+        self.components = None
+        self.popt = None
+        self.pcov = None
+        self.converted_popt = None
+        self.converted_pcov = None
+        self.residuals = None
+        self.sumsqr = None
+        self.R2 = None
 
-    """
-
-    def __init__(self, movie, kinetic, display=False):
-        """
-        Full model fitting process
-
-        Calling this function runs a complete model fitting series
-
-        Args:
-            self: placeholder variable
-            movie: movie class object
-            kinetic: kinetic class object
-            display (bool): choice to display the resulting fit data
+    def convert(self) -> None:
+        """Converts popt to proper units
 
         Returns:
-            outputs data to movie class object
+            self: converted data
+        """
+        self.converted_popt = copy.deepcopy(self.popt)
+        self.converted_pcov = copy.deepcopy(self.pcov)
+        if self.kinetic.name == "BSL":
+            if self.components == 1:
+                self.converted_popt[0] = self.popt[0] * self.metadata.framestep_size
+                self.converted_pcov[0] = self.pcov[0] * self.metadata.framestep_size
+            else:
+                self.converted_popt[self.components :] = (
+                    self.popt[self.components :] * self.metadata.framestep_size
+                )
+                self.converted_pcov[self.components :] = (
+                    self.pcov[self.components :] * self.metadata.framestep_size
+                )
+        elif self.kinetic.name == "RayDifCoef":
+            if self.components == 1:
+                self.converted_popt[0] = (
+                    1e8 * self.popt[1] ** 2 / (2 * self.metadata.framestep_size)
+                )
+                self.converted_pcov[0] = (
+                    1e8 * self.pcov[1] ** 2 / (2 * self.metadata.framestep_size)
+                )
+            else:
+                self.converted_popt[self.components :] = (
+                    1e8
+                    * self.popt[self.components :] ** 2
+                    / (2 * self.metadata.framestep_size)
+                )
+                self.converted_pcov[self.components :] = (
+                    1e8
+                    * self.pcov[self.components :] ** 2
+                    / (2 * self.metadata.framestep_size)
+                )
+        return self
 
-        Raises:
-            none
+    def dictify(self) -> dict:
+        """Format curve fitting data as a dictionary
 
+        Returns:
+            dict: export data for additional to central export data
         """
 
-        estimation = f.Calc.e_estimation(movie.bsldf)
-        popt, pcov, r2, sumsqr = FitFunctions.curve(
-            movie,
-            movie.bsldf,
-            OneCompExpDecay.equation,
-            [estimation],
-            OneCompExpDecay.bounds(),
-            OneCompExpDecay.output,
-            kinetic,
+        assert np.nan not in self.popt, "Model Fitting Failed, no data for update"
+        try:
+            export_dict = {}
+            prefix = f"{self.model_name} : {self.kinetic.name}"
+            if self.components == 1:
+                new_dict = {
+                    f"{prefix} ({self.kinetic.unit})": self.converted_popt[0],
+                    f"{prefix} Cov": self.converted_pcov[0],
+                }
+                export_dict.update(new_dict)
+            elif self.components > 1:
+                total_popt = sum(self.popt[: self.components])
+                for i in range(self.components):
+                    position = fo.Form.ordinal(i + 1)
+                    new_dict = {
+                        f"{prefix} {position} Pop %": 100 * self.popt[i] / total_popt,
+                        f"{prefix} {position} Pop Cov": self.pcov[i],
+                        f"{prefix} {position} Metric ({self.kinetic.unit})": self.converted_popt[
+                            i + self.components
+                        ],
+                        f"{prefix} {position} Metric Cov": self.converted_pcov[
+                            i + self.components
+                        ],
+                    }
+                    export_dict.update(new_dict)
+            remainder_dict = {
+                f"{prefix} SumSqr": self.sumsqr,
+                f"{prefix} R\u00b2": self.R2,
+            }
+            export_dict.update(remainder_dict)
+            return export_dict
+        except AssertionError:
+            return np.nan
+
+    def generate_plot(self, display: bool = True, save: bool = False) -> None:
+        """Display model"""
+        di.ScatteredLine(self).set_labels().plot(display, save)
+
+    def __str__(self):
+        return str(self.__dict__)
+
+
+class Director:
+    """Directs model building"""
+
+    def __init__(self, builder) -> None:
+        """Prep director for building
+
+        Args:
+            builder (class): builds the model object
+        """
+        self._builder = builder
+
+    def build_model(self) -> None:
+        """Calls functions to build model
+
+        Returns:
+            self: class object
+        """
+        self._builder.generate_model()
+        self._builder.set_equation()
+        self._builder.set_guess()
+        self._builder.add_attributes()
+        self._builder.calculate_parameters()
+        return self
+
+    def get_model(self) -> None:
+        """Retrieves generated model
+
+        Returns:
+            model object
+        """
+        return self._builder.model.convert()
+
+
+class ModelBuilder:
+    """Base model builder"""
+
+    def __init__(self) -> None:
+        """Creates blank model attribute"""
+        self.model = None
+
+    def generate_model(self) -> None:
+        """Creates blank model object"""
+        self.model = Model()
+
+
+class ExpDecay(ModelBuilder):
+    """Exponential Decay model builder
+
+    Args:
+        ModelBuilder (class): model builder class
+    """
+
+    component_options = [1, 2, 3, "ExpLin"]
+
+    def __init__(self, metadata, movie, *, components, kinetic, table) -> None:
+        """Initialize the exponential decay object
+
+        Args:
+            metadata (class object): persistent metadata
+            movie (class object): movie specific attributes
+            components (int): number of model components
+            kinetic (class object): kinetic for model fitting
+            table (pd.DataFrame): formatted data for fitting
+        """
+        assert (
+            components in ExpDecay.component_options
+        ), "Not a valid component description"
+        self.metadata = metadata
+        self.movie = movie
+        self._components = components
+        self.kinetic = kinetic
+        self._df = table
+        self._equation = None
+        self._limits = None
+        self._guess = None
+
+    def set_equation(self) -> None:
+        """Finds equation for fitting based on components
+
+        Raises:
+            TypeError: component value must be within class options
+        """
+        try:
+            if isinstance(self._components, int):
+                model_name = f"{num2words(self._components).capitalize()}Comp{self.__class__.__name__}"
+                self._equation = getattr(Equations, model_name)
+                NUM_LIMITS = len(signature(self._equation).parameters) - 1
+                self._limits = self._limits = (
+                    [0 for i in range(NUM_LIMITS)],
+                    [np.inf for i in range(NUM_LIMITS)],
+                )
+
+            elif isinstance(self._components, str):
+                model_name = f"{self._components}Comp{self.__class__.__name__}"
+                self._equation = getattr(Equations, model_name)
+                NUM_LIMITS = len(signature(self._equation).parameters) - 1
+                self._limits = (
+                    [-np.inf for i in range(NUM_LIMITS)],
+                    [np.inf for i in range(NUM_LIMITS)],
+                )
+            else:
+                raise TypeError
+            self.model.equation = self._equation
+        except TypeError:
+            print("Component descriptor is not a valid type (int or str)")
+
+    def set_guess(self) -> None:
+        """Set model fitting origin point"""
+        tau_estimation = fo.Calc.e_estimation(self._df)
+        if self._components == 1:
+            self._guess = [tau_estimation]
+        elif self._components > 1:
+            major_population = (1 / self._components) * 1.5
+            minor_population = (1 - major_population) / (self._components - 1)
+            self._guess = (
+                [major_population]
+                + list(itertools.repeat(minor_population, self._components - 1))
+                + list(itertools.repeat(tau_estimation, self._components))
+            )
+        else:
+            self._guess = [tau_estimation, 0.3]
+
+    def add_attributes(self) -> None:
+        """Add basic attributes"""
+        self.model.metadata = self.metadata
+        self.model.movie = self.movie
+        self.model.kinetic = self.kinetic
+        self.model.model_name = f"{self._components}-Comp {self.__class__.__name__}"
+        self.model.components = self._components
+
+    def calculate_parameters(self) -> None:
+        """Call the curve fitting function method"""
+        (
+            self.model.popt,
+            self.model.pcov,
+            self.model.residuals,
+            self.model.R2,
+        ) = FitFunction.curve(self._df, self._equation, self._guess)
+        self.model.sumsqr = np.sum(self.model.residuals**2)
+
+
+class RayDiff(ModelBuilder):
+    """Rayleigh Distribution / Diffusion
+
+    Args:
+        ModelBuilder (class): inherited model values"""
+
+    component_options = [1, 2, 3]
+
+    def __init__(self, metadata, movie, *, components, kinetic, table) -> None:
+        """Initialize Rayleigh object
+
+        Args:
+            metadata (class object): persistent metadata
+            components (int): number of components
+            kinetic (class object): kinetic class object
+            table (pd.DataFrame): formatted data for fitting
+        """
+        assert (
+            components in RayDiff.component_options
+        ), "Not a valid component description"
+        self.metadata = metadata
+        self.movie = movie
+        self._components = components
+        self.kinetic = kinetic
+        self._df = table
+        self._equation = None
+        self._limits = None
+        self._guess = None
+
+    def set_equation(self) -> None:
+        """Choose equation for fitting based on components"""
+        model_name = (
+            f"{num2words(self._components).capitalize()}Comp{self.__class__.__name__}"
         )
-        if display:
-            OneCompExpDecay.figure(movie, movie.bsldf, popt, pcov, r2, kinetic)
+        self._equation = getattr(Equations, model_name)
+        NUM_LIMITS = len(signature(self._equation).parameters) - 1
+        self._limits = (
+            [0 for i in range(NUM_LIMITS)],
+            [np.inf for i in range(NUM_LIMITS)],
+        )
+        self.model.equation = self._equation
 
-    def equation(t, tau):
-        """
-        One component equation
+    def set_guess(self) -> None:
+        """First guess for model fitting"""
+        try:
+            if self._components == 1:
+                self._guess = [1e-4, 1e-5]
+            elif self._components == 2:
+                self._guess = [7e-3, 2.7e-3, 2.87e-5, 9.33e-6]
+            elif self._components > 2:
+                self._guess = [7e-3 / 2 for i in range(self._components * 2)]
+            else:
+                raise ValueError
+        except ValueError:
+            print(f"No available guesses for {self._components}-Model")
 
-        e^(-t / tau)
+    def add_attributes(self) -> None:
+        """Add basic attributes"""
+        self.model.metadata = self.metadata
+        self.model.movie = self.movie
+        self.model.kinetic = self.kinetic
+        self.model.model_name = f"{self._components}-Comp {self.__class__.__name__}"
+        self.model.components = self._components
+
+    def calculate_parameters(self) -> None:
+        """Call curve fitting model"""
+        (
+            self.model.popt,
+            self.model.pcov,
+            self.model.residuals,
+            self.model.R2,
+        ) = FitFunction.curve(self._df, self._equation, self._guess)
+        self.model.sumsqr = np.sum(self.model.residuals**2)
+
+
+class Equations:
+    """Holder for all fitting equations"""
+
+    @staticmethod
+    def OneCompExpDecay(t, tau):
+        """One Component Exponential Decay
 
         Args:
-            t (int): time
-            tau (float): decay time constant
+            t (float): independent time variable
+            tau (float): dependent time constant
 
         Returns:
-            single exponential decay equation
-
-        Raises:
-            none
-
+            equation: full equation for model fitting
         """
-
         return np.exp(-t / tau)
 
-    def bounds():
-        """
-        One component bounds
-
-        no bounds are set for time constant tau
+    @staticmethod
+    def TwoCompExpDecay(t, a, b, tau1, tau2):
+        """Two Component Exponential Decay
 
         Args:
-            none
+            t (float): independent time variable
+            a (float): population constant
+            b (float): population constant
+            tau1 (float): time constant
+            tau2 (float): time constant
 
         Returns:
-            list: min and max parameter values
-
-        Raises:
-            none
-
+            equation: full equation for model fitting
         """
+        return (a * np.exp(-t / tau1)) + (b * np.exp(-t / tau2))
 
-        return [(-np.inf), (np.inf)]
-
-    def output(movie, popt, pcov, r2, sumsqr, kinetic):
-        """
-        One component exponential decay outputs
-
-        Outputs are selected based of the kinetic chosen
+    @staticmethod
+    def ThreeCompExpDecay(t, a, b, c, tau1, tau2, tau3):
+        """Three Component Exponential Decay
 
         Args:
-            self: movie class object
-            popt (list): parameter values
-            pcov (list): parameter covariance
-            r2 (float): goodness of fit
-            kinetic: input kinetic class
+            t (float): independent time variable
+            a (flaot): population constant
+            b (float): population constant
+            c (float): population constant
+            tau1 (float): time constant
+            tau2 (float): time constant
+            tau3 (float): time constant
 
         Returns:
-            none
-
-        Raises:
-            none
-
+            equation: full equation for model fitting
         """
-
-        movie.exportdata.update(
-            {
-                f"OneExp {kinetic.name} ({kinetic.unit})": popt[0]
-                * movie.framestep_size,
-                f"OneExp {kinetic.name} Cov": pcov[0],
-                f"OneExp SumSqr {kinetic.name}": sumsqr,
-                "R\u00b2 Exp": r2,
-            }
+        return (
+            (a * np.exp(-t / tau1)) + (b * np.exp(-t / tau2)) + (c * np.exp(-t / tau3))
         )
 
-    def figure(movie, df, popt, pcov, r2, kinetic):
-        """
-        Single exponential decay figure
-
-        Overlays fit line onto a decay scatter plot
+    @staticmethod
+    def OneCompRayDiff(t, a, sig):
+        """One Component Rayleigh Distrubution
 
         Args:
-            movie: movie class object
-            df: dataframe for scatter plot
-            popt (list): parameter values
-            pcov (list): parameter covariance
-            r2 (float): goodness of fit
-            kinetic: kinetic class identity
+            t (float): independent time variable
+            a (float): scale constant
+            sig (float): time constant
 
         Returns:
-            scatter plot overlayed with line
-
-        Raises:
-            none
-
+            equation: full equation for model fitting
         """
-
-        d.ExpDecay.onecomp(
-            movie,
-            df,
-            OneCompExpDecay.equation,
-            popt[0],
-            pcov[0],
-            r2,
-            kinetic,
-            title=movie.fig_title,
-            x_label=kinetic.x_label,
-            y_label=kinetic.y_label,
-        )
-
-
-class TwoCompExpDecay:
-    """
-    Two component exponential decay analyses
-
-    Workflow for fitting including equation, bounds, outputs, and figure
-
-    """
-
-    def __init__(self, movie, kinetic, display=False):
-        """
-        Full model fitting process
-
-        Calling this function runs a complete model fitting series
-
-        Args:
-            self: placeholder variable
-            movie: movie class object
-            kinetic: kinetic of interest
-            display: choice to display the resulting fit data
-
-        Returns:
-            outputs data to movie class object
-
-        Raises:
-            none
-
-        """
-
-        estimation = f.Calc.e_estimation(movie.bsldf)
-        popt, pcov, r2, sumsqr = FitFunctions.curve(
-            movie,
-            movie.bsldf,
-            TwoCompExpDecay.equation,
-            [0.75, 59.5, 143],
-            TwoCompExpDecay.bounds(),
-            TwoCompExpDecay.output,
-            kinetic,
-        )
-        if display:
-            TwoCompExpDecay.figure(movie, movie.bsldf, popt, pcov, r2, kinetic)
-
-    def equation(t, a, tau1, tau2):
-        """
-        Two component equation
-
-        a * e^(-t / tau1) + (1-a) * e^(-t / tau2)
-
-        Args:
-            t (int): time
-            a (float): percent population
-            tau1 (float): one decay time constant
-            tau2 (float): other decay time constant
-
-        Returns:
-            double exponential decay equation
-
-        Raises:
-            none
-
-        """
-
-        return a * np.exp(-t / tau1) + (1 - a) * np.exp(-t / tau2)
-
-    def bounds():
-        """
-        Two component bounds
-
-        a must be between 0 and 1
-        no bounds are set for time constants
-
-        Args:
-            none
-
-        Returns:
-            list: min and max parameter values
-
-        Raises:
-            none
-
-        """
-
-        return [(0, -np.inf, -np.inf), (1, np.inf, np.inf)]
-
-    def output(self, popt, pcov, r2, sumsqr, kinetic):
-        """
-        Two component exponential decay outputs
-
-        Outputs are selected based of the kinetic chosen
-        corrections so that major fraction is always first
-
-        Args:
-            self: movie class object
-            popt (list): parameter values
-            pcov (list): parameter covariance
-            r2 (float): goodness of fit
-            kinetic: input kinetic class
-
-        Returns:
-            none
-
-        Raises:
-            none
-
-        """
-
-        if popt[0] < 0.5:
-            popt[0] = 1 - popt[0]
-            popt[1], popt[2] = popt[2], popt[1]
-            pcov[1], pcov[2] = pcov[2], pcov[1]
-        self.exportdata.update(
-            {
-                "ExpExpA Maj Frac (%)": popt[0] * 100,
-                "ExpExpA Maj Frac Cov": pcov[0],
-                f"ExpExpA {kinetic.name} Maj ({kinetic.unit})": popt[1]
-                * self.framestep_size,
-                f"ExpExpA {kinetic.name} Maj Cov": pcov[1],
-                f"ExpExpA {kinetic.name} Min Frac": 100 - popt[0] * 100,
-                f"ExpExpA {kinetic.name} Min ({kinetic.unit})": popt[2]
-                * self.framestep_size,
-                f"ExpExpA {kinetic.name} Min Cov": pcov[2],
-                f"ExpExpA SumSqr {kinetic.name}": sumsqr,
-                "R\u00b2 ExpExpA": r2,
-            }
-        )
-
-    def figure(movie, df, popt, pcov, r2, kinetic):
-        """
-        Double exponential decay figure
-
-        Overlays fit line onto a decay scatter plot
-
-        Args:
-            self: movie class object
-            df (df): dataframe for scatter plot
-            popt (list): parameter values
-            pcov (list): parameter covariance
-            r2 (float): goodness of fit
-            kinetic: kinetic class identity
-
-        Returns:
-            scatter plot overlayed with line
-
-        Raises:
-            none
-
-        """
-
-        d.ExpDecay.twocomp(
-            movie,
-            df,
-            popt[0],
-            popt[1],
-            pcov[1],
-            popt[2],
-            pcov[2],
-            r2,
-            kinetic,
-            title=movie.fig_title,
-            x_label=kinetic.x_label,
-            y_label=kinetic.y_label,
-        )
-
-
-class Alt_TwoCompExpDecay:
-    """
-    Alternative two component exponential decay analyses
-
-    Workflow for fitting including equation, bounds, outputs, and figure
-    replaces 'a' in equation with two separate population variables
-
-    """
-
-    def __init__(self, movie, kinetic, display=False):
-        """
-        Full model fitting process
-
-        Calling this function runs a complete model fitting series
-
-        Args:
-            self: placeholder variable
-            movie: movie class object
-            kinetic: kinetic of interest
-            display: choice to display the resulting fit data
-
-        Returns:
-            outputs data to movie class object
-
-        Raises:
-            none
-
-        """
-
-        estimation = f.Calc.e_estimation(movie.bsldf)
-        popt, pcov, r2, sumsqr = FitFunctions.curve(
-            movie,
-            movie.bsldf,
-            Alt_TwoCompExpDecay.equation,
-            [0.85, 0.25, 50, 150],
-            Alt_TwoCompExpDecay.bounds(),
-            Alt_TwoCompExpDecay.output,
-            kinetic,
-        )
-
-    def equation(t, a, b, tau1, tau2):
-        """
-        Alt two component equation
-
-        a * e^(-t / tau1) + b * e^(-t / tau2)
-
-        Args:
-            t (interest): time
-            a (float): magnitude of one population
-            b (float): mangitude of other population
-            tau1 (float): one decay time constant
-            tau2 (float): other decay time constant
-
-        Returns:
-            alternate double exponential decay equation
-
-        Raises:
-            none
-
-        """
-
-        return a * np.exp(-t / tau1) + b * np.exp(-t / tau2)
-
-    def bounds():
-        """
-        Alt two component bounds
-
-        a and b cannot be negative
-        no bounds are set for time constants
-
-        Args:
-            none
-
-        Returns:
-            list: min and max parameter values
-
-        Raises:
-            none
-
-        """
-
-        return [(0, 0, -np.inf, -np.inf), (np.inf, np.inf, np.inf, np.inf)]
-
-    def output(movie, popt, pcov, r2, sumsqr, kinetic):
-        """
-        Alt two component exponential decay outputs
-
-        Outputs are selected based of the kinetic chosen
-        corrections so that the larger magnitude constant is always first
-
-        Args:
-            self: movie class object
-            popt (list): parameter values
-            pcov (list): parameter covariance
-            r2 (float): goodness of fit
-            kinetic: input kinetic class
-
-        Returns:
-            none
-
-        Raises:
-            none
-
-        """
-
-        if popt[0] < popt[1]:
-            popt[0], popt[1] = popt[1], popt[0]
-            pcov[0], pcov[1] = pcov[1], pcov[0]
-            popt[2], popt[3] = popt[3], popt[2]
-            pcov[2], pcov[3] = pcov[3], pcov[2]
-        movie.exportdata.update(
-            {
-                "Alt_ExpExp Maj Frac (%)": 100 * popt[0] / (popt[0] + popt[1]),
-                "Alt_ExpExp Maj Frac Cov": pcov[0],
-                f"Alt_ExpExp Maj {kinetic.name}"
-                f"({kinetic.unit})": popt[2] * movie.framestep_size,
-                f"Alt_ExpExp Maj {kinetic.name} Cov": pcov[2],
-                "Alt_ExpExp Min Frac (%)": 100 * popt[1] / (popt[0] + popt[1]),
-                "Alt_ExpExp Min Frac Cov": pcov[1],
-                f"Alt_ExpExp Min {kinetic.name}"
-                f"({kinetic.unit})": popt[3] * movie.framestep_size,
-                f"Alt_ExpExp Min {kinetic.name} Cov": pcov[3],
-                f"Alt_ExpExp SumSqr {kinetic.name}": sumsqr,
-                "R\u00b2 Alt_ExpExp": r2,
-            }
-        )
-
-    def figure(movie, df, popt, cov, r2, kinetic):
-        """
-        Alt double exponential decay figure
-
-        Overlays fit line onto a decay scatter plot
-
-        Args:
-            self: movie class object
-            df (df): dataframe for scatter plot
-            popt (list): parameter values
-            pcov (list): parameter covariance
-            r2 (float): goodness of fit
-            kinetic: kinetic class identity
-
-        Returns:
-            scatter plot overlayed with line
-
-        Raises:
-            none
-
-        """
-
-        d.ExpDecay.twocomp(
-            movie,
-            df,
-            popt[0] / (popt[0] + popt[1]),
-            popt[2],
-            cov[2],
-            popt[3],
-            cov[3],
-            r2,
-            kinetic,
-            title=movie.fig_title,
-            x_label=kinetic.x_label,
-            y_label=kinetic.y_label,
-        )
-
-
-class ThreeCompExpDecay:
-    """
-    Three component exponential decay analyses
-
-    Workflow for fitting including equation, bounds, outputs, and figure
-    replaces 'a' in equation with three separate population variables
-
-    """
-
-    def __init__(self, movie, kinetic, display=False):
-        """
-        Full model fitting process
-
-        Calling this function runs a complete model fitting series
-
-        Args:
-            self: placeholder variable
-            movie: movie class object
-            kinetic: kinetic of interest
-            display: choice to display the resulting fit data
-
-        Returns:
-            outputs data to movie class object
-
-        Raises:
-            none
-
-        """
-
-        estimation = f.Calc.e_estimation(movie.bsldf)
-        popt, pcov, r2, ssqr = FitFunctions.curve(
-            movie,
-            movie.bsldf,
-            ThreeCompExpDecay.equation,
-            [0.6, 0.3, 0.1, 59.5, 143, 100],
-            ThreeCompExpDecay.bounds(),
-            ThreeCompExpDecay.output,
-            kinetic,
-        )
-        # if display:
-        #     Alt_TwoCompExpDecay.figure(
-        #         movie, movie.bsldf, popt, pcov, r2, kinetic)
-
-    def equation(t, a, b, tau1, tau2):
-        """
-        Three component equation
-
-        a * e^(-t / tau1) + b * e^(-t / tau2) + c * e^(-t / tau3)
-
-        Args:
-            t (interest): time
-            a (float): magnitude of one population
-            b (float): magnitude of other population
-            c (float): magnitude of final population
-            tau1 (float): one decay time constant
-            tau2 (float): other decay time constant
-            tau3 (float): final decay time constant
-
-        Returns:
-            triple exponential decay equation
-
-        Raises:
-            none
-
-        """
-
-        return a * np.exp(-t / tau1) + b * np.exp(-t / tau2) + c * np.exp(-t / tau3)
-
-    def bounds():
-        """
-        Three component bounds
-
-        a, b, and c cannot be negative
-        no bounds are set for time constants
-
-        Args:
-            none
-
-        Returns:
-            list: min and max parameter values
-
-        Raises:
-            none
-
-        """
-
-        return [
-            (0, 0, 0, -np.inf, -np.inf, -np.inf),
-            (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf),
-        ]
-
-    def output(movie, popt, pcov, r2, sumsqr, kinetic):
-        """
-        Alt two component exponential decay outputs
-
-        Outputs are selected based of the kinetic chosen
-        corrections so that the larger magnitude constant is always first
-
-        Args:
-            self: movie class object
-            popt (list): parameter values
-            pcov (list): parameter covariance
-            r2 (float): goodness of fit
-            kinetic: input kinetic class
-
-        Returns:
-            none
-
-        Raises:
-            none
-
-        """
-
-        movie.exportdata.update(
-            {
-                "3Exp 1st Frac (%)": 100 * popt[0] / sum(popt[:3]),
-                "3Exp 1st Frac Cov": pcov[0],
-                f"3Exp 1st {kinetic.name} \
-                                 ({kinetic.unit})": popt[
-                    3
-                ]
-                * movie.framestep_size,
-                f"3Exp 1st {kinetic.name} Cov": pcov[3],
-                "3Exp 2nd Frac (%)": 100 * popt[1] / sum(popt[:3]),
-                "3Exp 2nd Frac Cov": pcov[1],
-                f"3Exp 2nd {kinetic.name} \
-                                 ({kinetic.unit})": popt[
-                    4
-                ]
-                * movie.framestep_size,
-                f"3Exp 2nd {kinetic.name} Cov": pcov[4],
-                "3Exp 3rd Frac (%)": 100 * popt[2] / sum(popt[:3]),
-                "3Exp 3rd Frac Cov": pcov[2],
-                f"3Exp 3rd {kinetic.name} \
-                                  ({kinetic.unit})": popt[
-                    5
-                ]
-                * movie.framestep_size,
-                f"3Exp 3rd {kinetic.name} Cov": pcov[5],
-                f"3Exp SumSqr {kinetic.name}": sumsqr,
-                "R\u00b2 ThreeExp": r2,
-            }
-        )
-
-    def figure(movie, df, popt, cov, r2, kinetic):
-        """
-        Alt double exponential decay figure
-
-        Overlays fit line onto a decay scatter plot
-
-        Args:
-            self: movie class object
-            df (df): dataframe for scatter plot
-            popt (list): parameter values
-            pcov (list): parameter covariance
-            r2 (float): goodness of fit
-            kinetic: kinetic class identity
-
-        Returns:
-            scatter plot overlayed with line
-
-        Raises:
-            none
-
-        """
-
-        d.ExpDecay.twocomp(
-            movie,
-            df,
-            popt[0] / (popt[0] + popt[1]),
-            popt[2],
-            cov[2],
-            popt[3],
-            cov[3],
-            r2,
-            kinetic,
-            title=movie.fig_title,
-            x_label=kinetic.x_label,
-            y_label=kinetic.y_label,
-        )
-
-
-class ExpLinDecay:
-    """
-    Exponential decay with linear component
-
-    Workflow for fitting including equation, bounds, outputs, and figure
-
-    """
-
-    def __init__(self, movie, kinetic, display=False):
-        """
-        Full model fitting process
-
-        Calling this function runs a complete model fitting series
-
-        Args:
-            self: placeholder variable
-            movie: movie class object
-            kinetic: kinetic of interest
-            display: choice to display the resulting fit data
-
-        Returns:
-            outputs data to movie class object
-
-        Raises:
-            none
-
-        """
-
-        estimation = f.Calc.e_estimation(movie.bsldf)
-        popt, pcov, r2, sumqr = FitFunctions.curve(
-            movie,
-            movie.bsldf,
-            ExpLinDecay.equation,
-            [estimation, 0.3],
-            ExpLinDecay.bounds(),
-            ExpLinDecay.output,
-            kinetic,
-        )
-        if display:
-            ExpLinDecay.figure(movie, movie.bsldf, popt, pcov, r2, kinetic)
-
-    def equation(t, tau, b):
-        """
-        Exponential and linear equation
-
-        e^(-t / tau) + b*x
-
-        Args:
-            t (int): time
-            tau (float): exponential time constant
-            b (float): linear component slope
-
-        Returns:
-            exponential and linear equation
-
-        Raises:
-            none
-
-        """
-
-        return np.exp(-t / tau) + b * t
-
-    def bounds():
-        """
-        exp and lin bounds
-
-        no restrictions on tau or b
-
-        Args:
-            none
-
-        Returns:
-            list: min and max parameter values
-
-        Raises:
-            none
-
-        """
-
-        return [(-np.inf, -np.inf), (np.inf, np.inf)]
-
-    def output(movie, popt, pcov, r2, sumsqr, kinetic):
-        """
-        Exponential and linear model output
-
-        Outputs are selected based of the kinetic chosen
-
-        Args:
-            self: movie class object
-            popt (list): parameter values
-            pcov (list): parameter covariance
-            r2 (float): goodness of fit
-            kinetic: input kinetic class
-
-        Returns:
-            none
-
-        Raises:
-            none
-
-        """
-
-        movie.exportdata.update(
-            {
-                f"Exp {kinetic.name} ({kinetic.unit})": popt[0] * movie.framestep_size,
-                f"Exp {kinetic.name} Cov": pcov[0],
-                "Lin Comp (frames)": popt[1],
-                "Lin Comp Cov": pcov[1],
-                f"ExpLin SumSqr {kinetic.name}": sumsqr,
-                "R\u00b2 ExpLin": r2,
-            }
-        )
-
-    def figure(movie, df, popt, cov, r2, kinetic):
-        """
-        Exponential and linear model figure
-
-        Overlays fit line onto a decay scatter plot
-
-        Args:
-            self: movie class object
-            df (df): dataframe for scatter plot
-            popt (list): parameter values
-            pcov (list): parameter covariance
-            r2 (float): goodness of fit
-            kinetic: kinetic class identity
-
-        Returns:
-            scatter plot overlayed with line
-
-        Raises:
-            none
-
-        """
-
-        d.ExpDecay.explin(
-            movie,
-            df,
-            popt[0],
-            cov[0],
-            popt[1],
-            cov[1],
-            r2,
-            kinetic,
-            title=movie.fig_title,
-            x_label=kinetic.x_label,
-            y_label=kinetic.y_label,
-        )
-
-
-class OneCompRayleigh:
-    """
-    One component Rayleigh fitting workflow
-
-    Workflow for fitting including equation, bounds, outputs, and figure
-    ***incomplete***
-
-    """
-
-    def __init__(self, movie, kinetic, display=False):
-        """
-        Full model fitting process
-
-        Calling this function runs a complete model fitting series
-
-        Args:
-            self: placeholder variable
-            movie: movie class object
-            kinetic: kinetic of interest
-            display: choice to display the resulting fit data
-
-        Returns:
-            outputs data to movie class object
-
-        Raises:
-            none
-
-        """
-
-        estimation = [1e-4, 1e-5]
-        popt, pcov, r2, sumsqr = FitFunctions.curve(
-            movie,
-            movie.raydf,
-            OneCompRayleigh.equation,
-            estimation,
-            OneCompRayleigh.bounds(),
-            OneCompRayleigh.output,
-            kinetic,
-        )
-        if display:
-            OneCompRayleigh.figure(movie, movie.raydf, popt, pcov, r2, kinetic)
-
-    def equation(t, a, sig):
-        """
-        Rayeigh probability distribution
-
-        Probability density function with no weights
-
-        Args:
-            t (int): time
-            sig (float): diffusion constant
-
-        Returns:
-            one component Rayleigh equation
-
-        Raises:
-            none
-
-        """
-
         return a * ((t * np.exp(-(t**2) / (2 * sig**2))) / sig**2)
 
-    def bounds():
-        """
-        One component Rayleigh bounds
-
-        no limits to sigma or population value
+    @staticmethod
+    def TwoCompRayDiff(t, a, b, sig1, sig2):
+        """Two Component Rayleigh Distribution
 
         Args:
-            none
+            t (float): independent time variable
+            a (float): population constant
+            b (float): population constant
+            sig1 (float): time constant
+            sig2 (float): time constant
 
         Returns:
-            list: min and max parameter values
-
-        Raises:
-            none
-
+            equation: full equation for model fitting
         """
-
-        return [(0, 0), (np.inf, np.inf)]
-
-    def output(movie, popt, pcov, r2, sumsqr, kinetic):
-        movie.exportdata.update(
-            {
-                f"{kinetic.name} ({kinetic.unit})": 1e8
-                * popt[1] ** 2
-                / (2 * movie.framestep_size),
-                f"{kinetic.name} Cov": pcov[1],
-                f"OneRay SumSqr {kinetic.name}": sumsqr,
-                "R\u00b2 OneRay": r2,
-            }
-        )
-
-    def figure(movie, df, popt, pcov, r2, kinetic):
-        """
-        Two part Rayleigh figure
-
-        Overlays fit line onto a decay scatter plot
-
-        Args:
-            movie: movie class object
-            df (df): dataframe for scatter plot
-            popt (list): parameter values
-            pcov (list): parameter covariance
-            r2 (float): goodness of fit
-            kinetic: kinetic class identity
-
-        Returns:
-            scatter plot overlayed with line
-
-        Raises:
-            none
-
-        """
-
-        d.Rayleigh.onecomp(
-            movie,
-            df,
-            popt[0],
-            popt[1],
-            pcov[1],
-            r2,
-            kinetic,
-            title=movie.fig_title,
-            x_label=kinetic.x_label,
-            y_label=kinetic.y_label,
-        )
-
-
-class TwoCompRayleigh:
-    """
-    Two component Rayleigh fitting workflow
-
-    Workflow for fitting including equation, bounds, outputs, and figure
-
-    """
-
-    def __init__(self, movie, kinetic, display=False):
-        """
-        Full model fitting process
-
-        Calling this function runs a complete model fitting series
-
-        Args:
-            self: placeholder variable
-            movie: movie class object
-            kinetic: kinetic of interest
-            display: choice to display the resulting fit data
-
-        Returns:
-            outputs data to movie class object
-
-        Raises:
-            none
-
-        """
-
-        estimation = [7e-3, 2.7e-3, 2.87e-5, 9.33e-6]
-        popt, pcov, r2, sumsqr = FitFunctions.curve(
-            movie,
-            movie.raydf,
-            TwoCompRayleigh.equation,
-            estimation,
-            TwoCompRayleigh.bounds(),
-            TwoCompRayleigh.output,
-            kinetic,
-        )
-        if display:
-            try:
-                TwoCompRayleigh.figure(movie, movie.raydf, popt, pcov, r2, kinetic)
-            except Exception:
-                pass
-
-    def equation(t, a, b, sig1, sig2):
-        """
-        Exponential and linear equation
-
-        a * rayleigh probability distribution +
-        b * rayleigh probability distribution
-
-        Args:
-            t (int): time
-            a (float): magnitude of one population
-            b (float): mangitude of other population
-            sig1 (float): one diffusion constant
-            sig2 (float): other diffusion constant
-
-        Returns:
-            two component Rayleigh equation
-
-        Raises:
-            none
-
-        """
-
         return (a * (t * np.exp(-(t**2) / (2 * sig1**2))) / sig1**2) + (
             b * (t * np.exp(-(t**2) / (2 * sig2**2))) / sig2**2
         )
 
-    def bounds():
-        """
-        Two component Rayleigh bounds
-
-        a and b cannot be negative
-        no bounds are set for diffusion constants
+    @staticmethod
+    def ThreeCompRayDiff(t, a, b, c, sig1, sig2, sig3):
+        """Three Component Rayleigh Distribution
 
         Args:
-            none
+            t (float): independent time variable
+            a (float): population constant
+            b (float): population constant
+            c (float): population constant
+            sig1 (float): time constant
+            sig2 (float): time constant
+            sig3 (float): time constant
 
         Returns:
-            list: min and max parameter values
-
-        Raises:
-            none
-
+            equation: full equation for model fitting
         """
-
-        return [(0, 0, 0, 0), (np.inf, np.inf, np.inf, np.inf)]
-
-    def output(movie, popt, cov, r2, sumsqr, kinetic):
-        """
-        Two component Rayleigh output
-
-        Outputs are selected based of the kinetic chosen
-
-        Args:
-            self: movie class object
-            popt (list): parameter values
-            pcov (list): parameter covariance
-            r2 (float): goodness of fit
-            kinetic: input kinetic class
-
-        Returns:
-            none
-
-        Raises:
-            none
-
-        """
-
-        if popt[0] < popt[1]:
-            popt[0], popt[1] = popt[1], popt[0]
-            cov[0], cov[1] = cov[1], cov[0]
-            popt[2], popt[3] = popt[3], popt[2]
-            cov[2], cov[3] = cov[3], cov[2]
-        movie.exportdata.update(
-            {
-                f"{kinetic.name} Maj Frac (%)": popt[0] / (popt[0] + popt[1]) * 100,
-                f"{kinetic.name} Maj Frac Cov": cov[0],
-                f"{kinetic.name} Maj ({kinetic.unit})": 1e8
-                * popt[2] ** 2
-                / (2 * movie.framestep_size),
-                f"{kinetic.name} Maj Cov": cov[2],
-                f"{kinetic.name} Min Frac (%)": popt[1] / (popt[0] + popt[1]) * 100,
-                f"{kinetic.name} Min Frac Cov": cov[1],
-                f"{kinetic.name} Min ({kinetic.unit})": 1e8
-                * popt[3] ** 2
-                / (2 * movie.framestep_size),
-                f"{kinetic.name} Min Cov": cov[3],
-                f"TwoRay SumSqr {kinetic.name}": sumsqr,
-                "R\u00b2 TwoRay": r2,
-            }
-        )
-
-    def figure(movie, df, popt, pcov, r2, kinetic):
-        """
-        Two part Rayleigh figure
-
-        Overlays fit line onto a decay scatter plot
-
-        Args:
-            movie: movie class object
-            df (df): dataframe for scatter plot
-            popt (list): parameter values
-            pcov (list): parameter covariance
-            r2 (float): goodness of fit
-            kinetic: kinetic class identity
-
-        Returns:
-            scatter plot overlayed with line
-
-        Raises:
-            none
-
-        """
-
-        d.Rayleigh.twocomp(
-            movie,
-            df,
-            popt[0],
-            popt[1],
-            popt[2],
-            pcov[2],
-            popt[3],
-            pcov[3],
-            r2,
-            kinetic,
-            title=movie.fig_title,
-            x_label=kinetic.x_label,
-            y_label=kinetic.y_label,
-        )
-
-
-class ThreeCompRayleigh:
-    """
-    Three component Rayleigh fitting workflow
-
-    Workflow for fitting including equation, bounds, outputs, and figure
-
-    """
-
-    def __init__(self, movie, kinetic, display=False):
-        """
-        Full model fitting process
-
-        Calling this function runs a complete model fitting series
-
-        Args:
-            self: placeholder variable
-            movie: movie class object
-            kinetic: kinetic of interest
-            display: choice to display the resulting fit data
-
-        Returns:
-            outputs data to movie class object
-
-        Raises:
-            none
-
-        """
-
-        estimation = [6e-3, 2e-3, 1e-3, 2e-5, 6.6e-6, 7.5e-6]
-        popt, pcov, r2, sumsqr = FitFunctions.curve(
-            movie,
-            movie.raydf,
-            ThreeCompRayleigh.equation,
-            estimation,
-            ThreeCompRayleigh.bounds(),
-            ThreeCompRayleigh.output,
-            kinetic,
-        )
-        if display:
-            TwoCompRayleigh.figure(movie, movie.raydf, popt, pcov, r2, kinetic)
-
-    def equation(t, a, b, c, sig1, sig2, sig3):
-        """
-        Exponential and linear equation
-
-        a * rayleigh probability distribution +
-        b * rayleigh probability distribution
-
-        Args:
-            t (int): time
-            a (float): magnitude of one population
-            b (float): mangitude of other population
-            sig1 (float): one diffusion constant
-            sig2 (float): other diffusion constant
-
-        Returns:
-            two component Rayleigh equation
-
-        Raises:
-            none
-
-        """
-
         return (
             (a * (t * np.exp(-(t**2) / (2 * sig1**2))) / sig1**2)
             + (b * (t * np.exp(-(t**2) / (2 * sig2**2))) / sig2**2)
-            + (c * (t * np.exp(-(t**2) / (2 * sig2**2))) / sig3**2)
+            + (c * (t * np.exp(-(t**2) / (2 * sig3**2))) / sig3**2)
         )
 
-    def bounds():
-        """
-        Three component Rayleigh bounds
-
-        a, b, and c cannot be negative
-        no bounds are set for diffusion constants
+    @staticmethod
+    def ExpLinCompExpDecay(t, tau, slope):
+        """Exponential and Linear Decay
 
         Args:
-            none
+            t (float): indpenedent time variable
+            tau (float): exponential decay time constant
+            slope (float): linear decay time constant
 
         Returns:
-            list: min and max parameter values
-
-        Raises:
-            none
-
+            _type_: _description_
         """
+        return np.exp(-t / tau) + slope * t
 
-        return [(0, 0, 0, 0, 0, 0), (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf)]
 
-    def output(movie, popt, cov, r2, sumsqr, kinetic):
-        """
-        Two component Rayleigh output
+class FitFunction:
+    """Fitting methods"""
 
-        Outputs are selected based of the kinetic chosen
+    @staticmethod
+    def curve(
+        df: pd.DataFrame, equation, p0: list[float], limits: list[float] = None
+    ) -> tuple:
+        """Fits curved data
 
         Args:
-            self: movie class object
-            popt (list): parameter values
-            pcov (list): parameter covariance
-            r2 (float): goodness of fit
-            kinetic: input kinetic class
+            df (pd.DataFrame): formatted data for model fitting
+            equation (function): model equation
+            p0 (list): initial guesses for model fitting
+            limits (list, optional): min and max constant values. Defaults to None.
 
         Returns:
-            none
-
-        Raises:
-            none
-
+            tuple: constants, variance, R-squared, and sum of square residuals
         """
-
-        movie.exportdata.update(
-            {
-                f"{kinetic.name} 1st Frac (%)": popt[0] / sum(popt[:3]) * 100,
-                f"{kinetic.name} 1st Frac Cov": cov[0],
-                f"{kinetic.name} 1st ({kinetic.unit})": 1e8
-                * popt[3] ** 2
-                / (2 * movie.framestep_size),
-                f"{kinetic.name} 1st Cov": cov[3],
-                f"{kinetic.name} 2nd Frac (%)": popt[1] / sum(popt[:3]) * 100,
-                f"{kinetic.name} 2nd Frac Cov": cov[1],
-                f"{kinetic.name} 2nd ({kinetic.unit})": 1e8
-                * popt[4] ** 2
-                / (2 * movie.framestep_size),
-                f"{kinetic.name} 2nd Cov": cov[4],
-                f"{kinetic.name} 3rd Frac (%)": popt[2] / sum(popt[:3]) * 100,
-                f"{kinetic.name} 3rd Frac Cov": cov[2],
-                f"{kinetic.name} 3rd ({kinetic.unit})": 1e8
-                * popt[5] ** 2
-                / (2 * movie.framestep_size),
-                f"{kinetic.name} 3rd Cov": cov[5],
-                f"ThreeRay SumSqr {kinetic.name}": sumsqr,
-                "R\u00b2 ThreeRay": r2,
-            }
-        )
-
-    # def figure(movie, df, popt, pcov, r2, kinetic):
-    #     """
-    #     Two part Rayleigh figure
-    #
-    #     Overlays fit line onto a decay scatter plot
-    #
-    #     Args:
-    #         movie: movie class object
-    #         df (df): dataframe for scatter plot
-    #         popt (list): parameter values
-    #         pcov (list): parameter covariance
-    #         r2 (float): goodness of fit
-    #         kinetic: kinetic class identity
-    #
-    #     Returns:
-    #         scatter plot overlayed with line
-    #
-    #     Raises:
-    #         none
-    #
-    #     """
-    #
-    #     d.Rayleigh.twocomp(movie, df,
-    #                       popt[0], popt[1],
-    #                       popt[2], pcov[2],
-    #                       popt[3], pcov[3],
-    #                       r2, kinetic,
-    #                       title=movie.fig_title,
-    #                       x_label=kinetic.x_label,
-    #                       y_label=kinetic.y_label)
-
-
-class FitFunctions:
-    """
-    Various methods for fitting data
-
-    Fit curved, linear, and Rayleigh distribution data
-    Rayleigh distributions not currently opperational
-
-    """
-
-    def recurve(movie, df, equation, p0, limits, output_method, kinetic, count=1):
-        """
-        Curve fitting using non linear least squares
-
-        fit scatter plot data using a selection of functions
-
-        Args:
-            self: movie class objects
-            df (df): dataframe with two columns, x and y
-            equation: equation with parameters used to fit dataframe
-            p0 (list): initial guesses for parameters
-            limits (list): parameter boundaries
-            output_method: how data is added to the movie.df attribute
-            kinetic: kinetic being modeled
-
-        Returns:
-            type: description
-
-        Raises:
-            Exception: description
-
-        """
-
         try:
             x_data = df.iloc[:, 0].values.astype(float)
             y_data = df.iloc[:, 1].values.astype(float)
-            if limits is None:
-                popt, pcov = curve_fit(equation, x_data, y_data, p0=p0)
-            else:
+            if limits:
                 popt, pcov = curve_fit(equation, x_data, y_data, p0=p0, bounds=limits)
-            pcov = np.sqrt(np.diag(pcov))
-            res = y_data - equation(x_data, *popt)
-            sum_sqr_res = np.sum(res**2)
-            sum_sqr_tot = np.sum((y_data - np.mean(y_data)) ** 2)
-            r2 = 1 - (sum_sqr_res / sum_sqr_tot)
-            if count > 10 and r2 < 0.99:
-                count += 1
-                educated_guess = [
-                    M + random.uniform(-2 * SD, 2 * SD) for M, SD in zip(popt, pcov)
-                ]
-                popt, pcov, r2, sum_sqr = FitFunctions.curve(
-                    movie,
-                    df,
-                    equation,
-                    educated_guess,
-                    limits,
-                    output_method,
-                    kinetic,
-                    count=count,
-                )
             else:
-                output_method(movie, popt, pcov, r2, kinetic)
-                return popt, pcov, r2, sum_sqr_res
-        except Exception as e:
-            print(f"Exception found\n{e}")
+                popt, pcov = curve_fit(equation, x_data, y_data, p0=p0)
+            pcov = np.sqrt(np.diag(pcov))
+            RES = y_data - equation(x_data, *popt)
+            SUM_SQR_RES = np.sum(RES**2)
+            SUM_SQR_TOT = np.sum((y_data - np.mean(y_data)) ** 2)
+            R2 = 1 - (SUM_SQR_RES / SUM_SQR_TOT)
+            return popt, pcov, RES, R2
+        except RuntimeError:
             return np.nan, np.nan, np.nan, np.nan
 
-    def curve(movie, df, equation, p0, limits, output_method, kinetic):
-        """
-        Curve fitting using non linear least squares
-
-        fit scatter plot data using a selection of functions
+    @staticmethod
+    def linear(df: pd.DataFrame):
+        """Linear Regression
 
         Args:
-            self: movie class objects
-            df (df): dataframe with two columns, x and y
-            equation: equation with parameters used to fit dataframe
-            p0 (list): initial guesses for parameters
-            limits (list): parameter boundaries
-            output_method: how data is added to the movie.df attribute
-            kinetic: kinetic being modeled
+            df (pd.DataFrame): two column dataframe
 
         Returns:
-            type: description
-
-        Raises:
-            Exception: description
-
+            tuple: line slope, y-axis intercept, and R-squared
         """
-
-        try:
-            x_data = df.iloc[:, 0].values.astype(float)
-            y_data = df.iloc[:, 1].values.astype(float)
-            if limits is None:
-                popt, pcov = curve_fit(equation, x_data, y_data, p0=p0)
-            else:
-                popt, pcov = curve_fit(equation, x_data, y_data, p0=p0, bounds=limits)
-            popt, pcov = curve_fit(equation, x_data, y_data, p0=p0, bounds=limits)
-            pcov = np.sqrt(np.diag(pcov))
-            res = y_data - equation(x_data, *popt)
-            sum_sqr_res = np.sum(res**2)
-            sum_sqr_tot = np.sum((y_data - np.mean(y_data)) ** 2)
-            r2 = 1 - (sum_sqr_res / sum_sqr_tot)
-            output_method(movie, popt, pcov, r2, sum_sqr_res, kinetic)
-            return popt, pcov, r2, sum_sqr_res
-        except Exception as e:
-            print(e)
-            return np.nan, np.nan, np.nan, np.nan
-
-    def linear(movie, df, x_col, y_col, kinetic):
-        """
-        Linear regression method (y = m*x + b)
-
-        Fit a line on a 2D set of data
-        Contains ability to select exact columns of interest
-
-        Args:
-            self: movie class object
-            df (df): contains all data
-            x_col (string): x values column name
-            y_col (string): y values column name
-            kinetic: kinetic class object
-
-        Returns:
-            slope (float): line slope
-            intercept (float): y-axis intercept
-            r2: goodness of fit
-            p: p-value whether the slope is zero
-            se: standard error of slope
-
-        Raises:
-            none
-
-        """
-
-        x_data = df[x_col].values.astype(float)
-        y_data = df[y_col].values.astype(float)
-        slope, intercept, r2, p, se = stats.linregress(x_data, y_data)
-        # tinv = lambda p, degf: abs(t.ppf(p/2, degf))
-        # ts = tinv(0.05, len(x_data)-2)
-        movie.exportdata.update(
-            {
-                f"{kinetic.name} ({kinetic.unit})": slope * 10**8,
-                f"{kinetic.name} R\u00b2:": r2,
-            }
-        )
-        return slope, intercept, r2, p, se
+        assert df.shape[1] == 2, "Dataframe must contain only two columns"
+        x_data = df.iloc[:, 0]
+        y_data = df.iloc[:, 1]
+        slope, intercept, r2 = stats.linregress(x_data, y_data)
+        return slope, intercept, r2

@@ -1,12 +1,50 @@
-import pandas as pd
-from tkinter import filedialog
-from tkinter import Tk
-import formulas as f
+"""Read in and out data"""
+
 import os
-from openpyxl import load_workbook, Workbook
+import copy
+from tkinter import filedialog
+from tkinter import *
+import numpy as np
+import pandas as pd
+import formulas as fo
+import cutoffs as cut
 
 
-class Setup:
+class MetaData:
+    """Microscope parameters"""
+
+    def __init__(
+        self,
+        *,
+        pixel_size: float = 0.000024,
+        framestep_size: float = 0.0217,
+        frame_cutoff: int = 10,
+    ) -> None:
+        """Initialize microscope parameters
+
+        Args:
+            pixel_size (float, optional): pixel width. Defaults to 0.000024.
+            framestep_size (float, optional): time between frames. Defaults to 0.0217.
+            frame_cutoff (int, optional): minimum trajectory length in frames. Defaults to 10.
+        """
+        self.pixel_size = pixel_size
+        self.framestep_size = framestep_size
+        self.frame_cutoff = frame_cutoff
+
+    def modify(self, **kwargs):
+        """Temporarily modify metadata
+
+        Returns:
+            object: modified metadata
+        """
+        temporary_metadata = copy.deepcopy(self)
+        for kwarg in kwargs:
+            for key, val in kwarg.items():
+                setattr(temporary_metadata, key, val)
+        return temporary_metadata
+
+
+class Script:
     """
     Initial program setup
 
@@ -14,7 +52,7 @@ class Setup:
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Setup info for later export
 
@@ -31,375 +69,283 @@ class Setup:
             none
 
         """
+        self._filetype_options = ["csv", "nd2"]
+        self.filetype = None
+        self.savefile = None
+        self.rootdir = None
+        self.parallel_process = False
+        self.cutoff_method = None
+        self.boolprint = False
+        self.booldisplay = False
+        self.boolsave = False
+        self.filelist = None
 
-        filetype_options = ['csv', 'nd2', 'sample']
-        self.filetype = f.Form.userinput('filetype', filetype_options)
+    def establish_constants(self) -> None:
+        """Update script parameters"""
+        self.filetype = fo.Form.userinput("filetype", self._filetype_options)
         root = Tk()
         root.withdraw()
         self.rootdir = filedialog.askdirectory()
-        print(self.rootdir)
-        self.savefile = input('\nName your output file: ')
-        self.parallel = f.Form.inputbool('\nProcess multiple files at once? (y/n): ')
-        if self.parallel:
-            self.brightmethod = 'auto'
-            self.display = False
+        self.savefile = os.path.join(self.rootdir, input("\nName your output file: "))
+        if self.parallel_process:
+            self.cutoff_method = "auto"
+            self.boolprint = False
+            self.booldisplay = False
         else:
-            brightmethod_options = ['manual', 'auto']
-            self.brightmethod = f.Form.userinput('brigthness thresholding method',
-                                                 brightmethod_options)
-            self.display = f.Form.inputbool('\nDisplay figures? (y/n): ')
+            brightness_options = (
+                ["clustering"]
+                + [
+                    option
+                    for option in dir(cut.Brightness)
+                    if option.startswith("__") is False
+                ]
+                + ["none"]
+            )
+            self.cutoff_method = fo.Form.userinput(
+                "cutoff/brigthness thresholding method", brightness_options
+            )
+            if self.cutoff_method == "semi_auto":
+                low_cut, high_cut = float(input("Low cutoff : ")), float(
+                    input("High cutoff : ")
+                )
+                self.cutoff_method = {"semi_auto": (low_cut, high_cut)}
+            self.boolprint = fo.Form.inputbool("Print progress?")
+            self.booldisplay = fo.Form.inputbool("Display figures?")
+        self.boolsave = fo.Form.inputbool("Save figures?")
 
-    def filelist(self):
+    def generate_filelist(self) -> None:
+        """Build list of all files to analyze"""
+        all_files = []
+        for root, dirs, files in os.walk(self.rootdir):
+            for name in files:
+                if name.endswith(self.filetype):
+                    all_files += [os.path.join(root, name)]
+        all_files.sort()
+        self.filelist = all_files
+
+    @staticmethod
+    def batching(task: function, filelist: list[str]) -> pd.DataFrame:
         """
-        List form of all files
+        Batch process movies
 
-        All filepaths that meet criteria for analysis
+        Analyze multiple movies simultaneously
 
         Args:
-            self
+            task: processing function
+            filelist (list): list of files to analyze
 
         Returns:
-            self.filelist (list): all filepaths in one list
+            concatenated dataframe
 
         Raises:
-            none
+            Assert Error: if the number of processes is <= 1
+            Assert Error: if filetype is not 'csv'
 
         """
 
-        self.filelist = []
-        for subdir, dirs, files in os.walk(self.rootdir, topdown=False):
-            for file in files:
-                if file.endswith(self.filetype):
-                    file = file.replace('\\', '/')
-                    subdir = subdir.replace('\\', '/')
-                    filepath = f'{subdir}/{file}'
-                    self.filelist += [filepath]
-        self.filelist.sort(reverse=False)
+        from multiprocessing import Pool
 
-    def dfread(self, filepath):
-        """
-        Read in ND2 files
+        dfs = []
+        while True:
+            print(f"Process -x- (max: {len(filelist)}) at once...")
+            batch_size = int(input("x = ?: "))
+            if batch_size > len(filelist):
+                print("Error: processes > number of files")
+            else:
+                break
+        while filelist:
+            if batch_size >= len(filelist):
+                batch_size = len(filelist)
+            with Pool(batch_size) as pool:
+                dfs += list(pool.map(task, filelist))
+                pool.close()
+                pool.join()
+            filelist = filelist[batch_size:]
+        return pd.concat(dfs, ignore_index=True)
 
-        loop through directory and find nd2 movie files
+
+class FileReader:
+    """Reads raw datafile into workable table"""
+
+    def __init__(self, filetype: str, filelist: list[str]) -> None:
+        """Initialize file reader
 
         Args:
-            format (string): 3 character file format
-
-        Returns:
-            movie class object
-
-        Raises:
-            none
-
+            filetype (str): filetype extension
+            filelist (list): all file names to analyze
         """
+        self._filetype = filetype
+        self._rawfiles = filelist
+        self.pre_processed_files = []
+        reader_method = getattr(FileReader, f"process_{self._filetype}")
+        reader_method(self)
 
-        name = filepath.split('/')[-1][:-4]
-        if self.filetype == 'csv':
-            tracking = pd.read_csv(filepath, index_col=[0])
-            tracking.rename(columns={'m2': 'Brightness'}, inplace=True)
-            movie = Movie(name, filepath, tracks = tracking)
-        if self.filetype == 'nd2':
-            tracking = Track(filepath)
-            movie = Movie(name, filepath, tracks = tracking.data)
-        return movie
+    def process_csv(self) -> None:
+        """Processes csv files"""
+        for file in self._rawfiles:
+            track_df = pd.read_csv(file, index_col=[0])
+            track_df.rename(columns={"m2": "Brightness"}, inplace=True)
+            self.pre_processed_files += [(file, track_df)]
 
-
-
-class Track:
-    """
-    Identify and link trajectories
-
-    Use commercial, modified nearest neighbor algorithm to link particles
-
-    """
-
-    def __init__(self, im_path, quiet = False):
-        """
-        Track particles
-
-        Use trackpy to identify and link individual particles
-
-        Args:
-            im_path (string): nd2 image file im_path
-            quiet (bool): display text readout from trackpy
-
-        Returns:
-            trajectory data table as self.data
-
-        Raises:
-            Exception: restarts the loop (limit errors are oddly common???)
-
-        """
-
+    def process_nd2(self) -> None:
+        """Processes nd2 files"""
         from pims import ND2Reader_SDK
         import trackpy as tp
-        import h5py
-        import os
 
-
-        diameter = 5
-        pix_mov = 10
-        if quiet:
-            tp.quiet()
+        tp.quiet()
         power_through_it = True
-        attempts = 0
-        while power_through_it:
-            with ND2Reader_SDK(im_path) as movie:
-                if os.path.exists('data.h5'):
-                    os.remove('data.h5')
-                low_mass = min([i.min() for i in movie])
-                try:
-                    with tp.PandasHDFStore('data.h5') as s:
-                        print('\n^^^ This error is normal... unfortunately',
-                              'Beginning Batch Processing', sep = 2*'\n')
-                        tp.batch(movie, diameter, minmass = low_mass,
-                                 processes = 'auto', output = s)
-                        print('Batch Processing Complete',
-                              'Beginning Trajectory Linking', sep = 2*'\n')
-                        for linked in tp.link_df_iter(s, pix_mov):
-                            s.put(linked)
-                        trajs = pd.concat(iter(s))
-                        power_through_it = False
-                        print('Trajectory Linking Complete')
-                except Exception:
-                    print('Occassionally this part has issues, trying again')
-                    attempts += 1
-                    if attempts > 10:
-                        power_through_it = False
-        if os.path.exists('data.h5'):
-            os.remove('data.h5')
-        if trajs:
-            trajs = trajs.rename(columns={'particle': 'Trajectory',
-                                          'frame': 'Frame',
-                                          'mass': 'Brightness'})
-            trajs = f.Form.reorder(trajs, 'Trajectory', 0)
-            trajs = f.Form.reorder(trajs, 'Frame', 1)
-            trajs = f.Form.reorder(trajs, 'x', 2)
-            trajs = f.Form.reorder(trajs, 'y', 3)
-            trajs = f.Form.reorder(trajs, 'Brightness', 4)
-            trajs.to_csv(f'{im_path[:-4]}_TP.csv')
-            self.data = trajs
-        else:
-            print('utter failure')
+        DIAMETER = 7
+        ATTEMPTS = 0
+        MOVEMENT = 10
+        MEMORY = 1
+        for file in self._rawfiles:
+            while power_through_it:
+                with ND2Reader_SDK(file) as movie:
+                    try:
+                        if os.path.exists("data.h5"):
+                            os.remove("data.h5")
+                        low_mass = np.mean([np.median(i) for i in movie])
+                        with tp.PandasHDFStoreBig("data.h5") as s:
+                            print(
+                                "Beginning Batch Processing",
+                                sep=2 * "\n",
+                            )
+                            tp.batch(
+                                movie,
+                                DIAMETER,
+                                minmass=low_mass,
+                                max_iterations=3,
+                                output=s,
+                            )
+                            print(
+                                "Batch Processing Complete",
+                                "Beginning Trajectory Linking",
+                                sep=2 * "\n",
+                            )
+                            pred = tp.predict.NearestVelocityPredict()
+                            for linked in pred.link_df_iter(
+                                s,
+                                search_range=MOVEMENT,
+                                memory=MEMORY,
+                                neighbor_strategy="BTree",
+                            ):
+                                s.put(linked)
+                            track_df = pd.concat(s)
+                            track_df = fo.Form.reorder(track_df, "x", 0)
+                            track_df.rename(
+                                columns={"mass": "Brightness"}, inplace=True
+                            )
+                            track_df = track_df.reset_index(drop=True)
+                            print("Trajectory Linking Complete")
+                            self.pre_processed_files += [(file, track_df)]
+                    except Exception:
+                        print("Occassionally this part has issues, trying again")
+                        ATTEMPTS += 1
+                        if ATTEMPTS > 10:
+                            power_through_it = False
 
 
-class Movie:
-    """
-    Movie object class
+class RawDataFrame:
+    """DataFrame pre-processing"""
 
-    Extract and establish data from image stack (movie) file
-
-    """
-
-    def __init__(self, name, file,
-                 tracks, frame_cutoff=10):
-        """
-        Establish movie file parameters
-
-        Define metadata related to movie and camera
+    def __init__(self, df: pd.DataFrame) -> None:
+        """Initialize the new dataframe
 
         Args:
-            name (string): name of movies
-            file (string): rootdir location
-            frame_cutoff (int) : minimum frames for various analyses
-
-        Returns:
-            object metadata attributes
-
-        Raises:
-            none
-
+            df (pd.DataFrame): trajectory data table
         """
+        average_df = df.groupby("Trajectory")["Brightness"].mean()
+        self.data_df = df.join(average_df, on="Trajectory", rsuffix="-Average")
 
-        self.name = {'Name': name}
-        self.date = f.Find.identifiers(
-            file, '/', 'Date Acquired', ['ymd'])
-        self.protein_info = f.Find.identifiers(
-            name, '_', 'Protein', ['grp', 'pdk'])
-        self.gasket = f.Find.identifiers(file, '/', 'Gasket', ['gas'])
-        self.replicate = {'Replicate': name[-2:]}
-        self.ND = f.Find.identifiers(name, '_', 'ND Filter', ['nd'], '08')
-        self.pixel_size = 0.000024
-        self.framestep_size = 0.0217
-        self.frame_cutoff = frame_cutoff
-        self.fig_title = f.Form.catdict(self.protein_info, self.ND,
-                                        self.gasket, self.replicate)
-        self.df = tracks
-        self.exportdata = self.name | self.date | self.gasket | \
-                          self.replicate | self.protein_info | self.ND
-        print(f'\nImage Name : {name}',
-              self.date, self.gasket, self.replicate, self.ND,
-              f'Initial Trajectory Count : {f.Calc.traj_count(self.df)}',
-              sep='\n', end='\n'*2)
 
-class Exports:
-    """
-    Export data
+class Movie(RawDataFrame):
+    """Individual movie object class
 
-    Save and ammend exported data
-
+    Args:
+        RawDataFrame (class): creates average trajectory brightness column
     """
 
-    def __init__(self, name, rootdir):
-        """
-        Export acquired data
-
-        Build the dataframe and export all its data
+    def __init__(self, metadata, filepath: str, trajectory_df: pd.DataFrame) -> None:
+        """Initialize movie object
 
         Args:
-            name (string): typically the same as Setup.rootdir()
-            export_df: takes keys (columns) from export data and creates empty
-                dataframe
-            rootdir (str): root directory
-
-        Returns:
-            none
-
-        Raises:
-            none
-
+            metadata (class object): persistent metadata
+            filepath (string): full file location
+            trajectory_df (pd.DataFrame): initial trajectory data
         """
+        RawDataFrame.__init__(self, trajectory_df)
+        self.metadata = metadata
+        self.filepath = os.path.normpath(filepath)
+        self._name = {"FileName": self.filepath.split(os.sep)[-1][:-4]}
+        self._date = fo.Find.identifiers(
+            self.filepath, os.sep, "Date Acquired", ["ymd"]
+        )
+        self._gasket = fo.Find.identifiers(self.filepath, os.sep, "Gasket", ["gas"])
+        self._replicate = {"Replicate": self._name["FileName"][-2:]}
+        self._ND = fo.Find.identifiers(
+            self._name["FileName"], "_", "ND Filter", ["nd"], failure="08"
+        )
+        self._protein = fo.Find.identifiers(
+            self._name["FileName"], "_", "Protein", ["grp", "pdk", "pkc", "akt"]
+        )
+        self.export_dict = {}
+        for key, val in self.__dict__.items():
+            if key.startswith("_"):
+                for att_key, att_val in val.items():
+                    self.export_dict[att_key] = att_val
 
-        self.name = name
-        self.exportpath = rootdir+f'\\{self.name}.xlsx'
+        self.figure_title = copy.deepcopy(self._name["FileName"])
 
-    def start_df(self, exportdata):
-        start = pd.DataFrame(columns=list(exportdata.keys()))
-        self.export_df = start
-
-    def append_df_to_excel(filename, df, sheet_name='Sheet1', startrow=None,
-                       truncate_sheet=False,
-                       **to_excel_kwargs):
-        """
-        Add row to Excel
-
-        Use Excel Writer to add row to xlsx file
+    def add_export_data(self, new_dict: dict) -> None:
+        """Builds export dictionary
 
         Args:
-            filename (str): Excel filename
-            df (df): dataframe to append
-            sheet_name (str): Excel file sheet tab name
-            startrow (int): row to append data
-            truncate_sheet (bool): shorten sheet
-            **to_excel_kwargs (dict): additional arguments
-
-        Returns:
-            new excel file
-
-        Raises:
-            none
-
+            new_dict (dict): key (column) and values (cell) for export
         """
+        self.export_dict.update(new_dict)
 
-        if not os.path.isfile(filename):
-            df.to_excel(
-                filename,
-                sheet_name=sheet_name,
-                startrow=startrow if startrow is not None else 0,
-                **to_excel_kwargs)
-            return
-        if 'engine' in to_excel_kwargs:
-            to_excel_kwargs.pop('engine')
-        options = {}
-        options['strings_to_formulas'] = False
-        options['strings_to_urls'] = False
-        writer = pd.ExcelWriter(filename, engine='openpyxl', mode='a',
-                                options=options)
-        writer.book = load_workbook(filename)
-        if startrow is None and sheet_name in writer.book.sheetnames:
-            startrow = writer.book[sheet_name].max_row
-        if truncate_sheet and sheet_name in writer.book.sheetnames:
-            idx = writer.book.sheetnames.index(sheet_name)
-            writer.book.remove(writer.book.worksheets[idx])
-            writer.book.create_sheet(sheet_name, idx)
-        writer.sheets = {ws.title:ws for ws in writer.book.worksheets}
-        if startrow is None:
-            startrow = 0
-        df.to_excel(writer, sheet_name, startrow=startrow,
-                    **to_excel_kwargs)
-        writer.save()
-
-    def writer(path, df, mode='w', engine='openpyxl', if_sheet_exists=None,
-               sheet_name='Raw'):
-        with pd.ExcelWriter(path, mode=mode, engine=engine,
-                            if_sheet_exists=if_sheet_exists) as writer:
-            df.to_excel(writer, sheet_name=sheet_name)
-
-    def build_df(self, dict):
-        """
-        Generates the export dataframe
-
-        Appends dictionary values to export_df
+    def update_trajectory_df(self, *, new_df: pd.DataFrame) -> None:
+        """Updates data_df attribute
 
         Args:
-            dict (dictionary): dictionary of movie kinetics/values
-
-        Returns:
-            export_df (df): dataframe containing data from all movies
-
-        Raises:
-            none
-
+            new_df (pd.DataFrame): updated (thresholded) trajectory data
         """
+        setattr(self, "data_df", new_df)
 
-        new_row = pd.DataFrame(dict, index = [0])
-        self.export_df = pd.concat([self.export_df, new_row])
 
-    def csv(self, df, rootdir):
-        """
-        Export dataframe as csv file
+class Export:
+    """Export class"""
 
-        can cause errors where the main script tries to read this file as image
+    export_file_types = ["csv", "xlsx"]
+
+    def __init__(self, script, df: pd.DataFrame) -> None:
+        """Initialize export class object
 
         Args:
-            df (df): final dataframe with all calculated data
-            rootdir (string): directory location of save file
-
-        Returns:
-            csv file
-
-        Raises:
-            none
-
+            script (class obect): script parameters
+            df (pd.DataFrame): export dataframe
         """
+        self._file_ext = fo.Form.userinput("filetype", Export.export_file_types)
+        self._name = os.path.join(script.rootdir, f"{script.savefile}.{self._file_ext}")
+        print(self._name)
+        self._df = df
 
-        full_file = script.rootdir+f'\\{self.name}'
-        self.fidf = df
-        csv_doc = df.to_csv(full_file+'.xlsx', index=False)
-        return csv_doc
+    def __call__(self) -> None:
+        export_func = getattr(Export, self._file_ext)
+        export_func(self)
 
-    def xlsx(self, script, df):
-        """
-        Export dataframe as xlsx file
-
-        Tabs can be generated within this file to make it more digestable
-
-        Args:
-            script: script class object
-            df (df): final dataframe with all calculated data
-
-        Returns:
-            xlsx file
-
-        Raises:
-            none
-
-        """
-
-        full_file = script.rootdir+f'\\{self.name}'
-        self.fidf = df
+    def csv(self) -> None:
+        """Export data as csv"""
         try:
-            excel_doc = df.to_excel(full_file+'.xlsx', index=False, sheet_name='Raw')
-            print('Export Successful')
-            return excel_doc
-        except Exception:
-            print('Export Failed')
+            self._df.to_csv(self._name, index=False)
+            print("Export Successful")
+        except Exception as e:
+            print(f"Export Failed\nReason: {e}")
 
-    def figure(rootdir, name):
-        exdir = rootdir+'\Figures\\'
-        full = exdir + ''
-        pass
-    # def xlsx_write(self, kw):
-    #     sheet_df = self.fdf.filter(regex=kw)
-    #     with pd.ExcelWriter(self.full_file+'.xlsx') as writer:
-    #         sheet_df.to_excel(writer, sheet_name=kw, index=False)
+    def xlsx(self) -> None:
+        """Export data as xlsx"""
+        try:
+            self._df.to_excel(self._name, index=False, sheet_name="Raw")
+            print("Export Successful")
+        except Exception as e:
+            print(f"Export Failed\nReason: {e}")
