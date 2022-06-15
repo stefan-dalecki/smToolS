@@ -4,11 +4,11 @@ import itertools
 import copy
 from inspect import signature
 import numpy as np
+import pandas as pd
 from scipy import stats
 from scipy.optimize import curve_fit
 from num2words import num2words
 import formulas as fo
-import pandas as pd
 import display as di
 
 
