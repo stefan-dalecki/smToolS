@@ -124,7 +124,7 @@ class Script:
         self.filelist = all_files
 
     @staticmethod
-    def batching(task: function, filelist: list[str]) -> pd.DataFrame:
+    def batching(task, filelist: list[str]) -> pd.DataFrame:
         """
         Batch process movies
 
