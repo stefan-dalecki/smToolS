@@ -123,11 +123,11 @@ class Model:
 class Director:
     """Directs model building"""
 
-    def __init__(self, builder) -> None:
+    def __init__(self, builder: object) -> None:
         """Prep director for building
 
         Args:
-            builder (class): builds the model object
+            builder (object): builds the model object
         """
         self._builder = builder
 
@@ -174,7 +174,15 @@ class ExpDecay(ModelBuilder):
 
     component_options = [1, 2, 3, "ExpLin"]
 
-    def __init__(self, metadata, movie, *, components, kinetic, table) -> None:
+    def __init__(
+        self,
+        metadata: object,
+        movie: object,
+        *,
+        components: int or str,
+        kinetic: object,
+        table: pd.DataFrame,
+    ) -> None:
         """Initialize the exponential decay object
 
         Args:
@@ -269,7 +277,15 @@ class RayDiff(ModelBuilder):
 
     component_options = [1, 2, 3]
 
-    def __init__(self, metadata, movie, *, components, kinetic, table) -> None:
+    def __init__(
+        self,
+        metadata: object,
+        movie: object,
+        *,
+        components: int,
+        kinetic: object,
+        table: pd.DataFrame,
+    ) -> None:
         """Initialize Rayleigh object
 
         Args:
@@ -340,7 +356,7 @@ class Equations:
     """Holder for all fitting equations"""
 
     @staticmethod
-    def OneCompExpDecay(t, tau):
+    def OneCompExpDecay(t: float, tau: float) -> np.ndarray:
         """One Component Exponential Decay
 
         Args:
@@ -353,7 +369,9 @@ class Equations:
         return np.exp(-t / tau)
 
     @staticmethod
-    def TwoCompExpDecay(t, a, b, tau1, tau2):
+    def TwoCompExpDecay(
+        t: float, a: float, b: float, tau1: float, tau2: float
+    ) -> np.ndarray:
         """Two Component Exponential Decay
 
         Args:
@@ -369,7 +387,9 @@ class Equations:
         return (a * np.exp(-t / tau1)) + (b * np.exp(-t / tau2))
 
     @staticmethod
-    def ThreeCompExpDecay(t, a, b, c, tau1, tau2, tau3):
+    def ThreeCompExpDecay(
+        t: float, a: float, b: float, c: float, tau1: float, tau2: float, tau3: float
+    ) -> np.ndarray:
         """Three Component Exponential Decay
 
         Args:
@@ -389,7 +409,7 @@ class Equations:
         )
 
     @staticmethod
-    def OneCompRayDiff(t, a, sig):
+    def OneCompRayDiff(t: float, a: float, sig: float) -> np.ndarray:
         """One Component Rayleigh Distrubution
 
         Args:
@@ -403,7 +423,9 @@ class Equations:
         return a * ((t * np.exp(-(t**2) / (2 * sig**2))) / sig**2)
 
     @staticmethod
-    def TwoCompRayDiff(t, a, b, sig1, sig2):
+    def TwoCompRayDiff(
+        t: float, a: float, b: float, sig1: float, sig2: float
+    ) -> np.ndarray:
         """Two Component Rayleigh Distribution
 
         Args:
@@ -421,7 +443,9 @@ class Equations:
         )
 
     @staticmethod
-    def ThreeCompRayDiff(t, a, b, c, sig1, sig2, sig3):
+    def ThreeCompRayDiff(
+        t: float, a: float, b: float, c: float, sig1: float, sig2: float, sig3: float
+    ) -> np.ndarray:
         """Three Component Rayleigh Distribution
 
         Args:
@@ -443,7 +467,7 @@ class Equations:
         )
 
     @staticmethod
-    def ExpLinCompExpDecay(t, tau, slope):
+    def ExpLinCompExpDecay(t: float, tau: float, slope: float) -> np.ndarray:
         """Exponential and Linear Decay
 
         Args:
@@ -462,13 +486,16 @@ class FitFunction:
 
     @staticmethod
     def curve(
-        df: pd.DataFrame, equation, p0: list[float], limits: list[float] = None
+        df: pd.DataFrame,
+        equation: np.ndarray,
+        p0: list[float],
+        limits: list[float] = None,
     ) -> tuple:
         """Fits curved data
 
         Args:
             df (pd.DataFrame): formatted data for model fitting
-            equation (function): model equation
+            equation (np.ndarray): model equation
             p0 (list): initial guesses for model fitting
             limits (list, optional): min and max constant values. Defaults to None.
 
