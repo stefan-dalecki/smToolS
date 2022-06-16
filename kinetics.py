@@ -1,5 +1,6 @@
 """Biophysical kinetics"""
 
+from statistics import pstdev
 from collections import defaultdict
 from statistics import mean
 import pandas as pd
@@ -258,13 +259,23 @@ class RayD(KineticBuilder):
 
     def dataformat(self) -> None:
         """Bin data for Rayleigh Distribution model fitting"""
-        bins = np.linspace(1 / 604800, 169 / 604800, 85)
-        correct = [i + (1 / 604800) for i in bins][:-1]
-        df = pd.DataFrame(self._datalist, columns=["values"])
+        # bins = np.linspace(1 / 604800, 169 / 604800, 85)
+        # correct = [i + (1 / 604800) for i in bins][:-1]
+        sep = 100
+        list_max = np.max(self._datalist)
+        sdev = pstdev(self._datalist)
+        polish = [i for i in self._datalist if i < i + 2 * sdev and i > i - 2 * sdev]
+        bins = np.linspace(0, list_max + (list_max / sep), sep)
+        # correct = [i + np.max(self._datalist) / sep for i in bins][:-1]
+        df = pd.DataFrame(polish, columns=["values"])
         bin_data = pd.DataFrame(
             df.groupby(pd.cut(df["values"], bins=bins)).size().values,
             columns=["Frequency (#)"],
         )
-        bin_data.index = correct
+        bin_data.index = bins[:-1]
         bin_data = bin_data.reset_index(drop=False)
         self.kinetic.table = bin_data
+
+    def alternate_format(self) -> None:
+        """Alternate method for creating the kinetic table"""
+        pass
