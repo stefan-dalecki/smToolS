@@ -19,7 +19,7 @@ class Clustering:
     class Clustering:
         """K-means clustering thresholding"""
 
-    def __init__(self, metadata, df: pd.DataFrame) -> None:
+    def __init__(self, metadata: object, df: pd.DataFrame) -> None:
 
         """Initialize clustering object
 
@@ -135,9 +135,9 @@ class Brightness:
 
     def __init__(
         self,
-        metadata,
+        metadata: object,
         df: pd.DataFrame,
-        method=None,
+        method: str = None,
     ) -> None:
         """Initialize brightness object
 
@@ -266,7 +266,9 @@ class Brightness:
 class Length:
     """Remove too short of trajectories"""
 
-    def __init__(self, metadata, df: pd.DataFrame, *, method: str = None) -> None:
+    def __init__(
+        self, metadata: object, df: pd.DataFrame, *, method: str = None
+    ) -> None:
         """Initialize lenght object
 
         Args:
@@ -309,7 +311,7 @@ class Length:
 class Diffusion:
     """Diffusion cutoffs"""
 
-    def __init__(self, metadata, df: pd.DataFrame) -> None:
+    def __init__(self, metadata: object, df: pd.DataFrame) -> None:
         """Initialize diffusion object
 
         Args:
