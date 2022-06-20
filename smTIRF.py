@@ -36,22 +36,23 @@ def main(file: tuple) -> pd.DataFrame:
         elif script.cutoff_method == "clustering":
             cluster = cut.Clustering(metadata, movie.data_df)
             cluster.add_parameters().estimate_clusters().display().cluster()
-            movie.update_trajectory_df(new_df=cluster.cutoff_df)
             metadata.__setattr__("frame_cutoff", cluster.min_length)
+            diffusion = cut.Diffusion(metadata, cluster.cutoff_df)
+            movie.update_trajectory_df(new_df=diffusion.cutoff_df)
             bsl = (
-                kin.Director(kin.BSL(metadata, cluster.cutoff_df))
+                kin.Director(kin.BSL(metadata, diffusion.cutoff_df))
                 .construct_kinetic()
                 .get_kinetic()
             )
             msd = (
-                kin.Director(kin.MSD(metadata, cluster.cutoff_df))
+                kin.Director(kin.MSD(metadata, diffusion.cutoff_df))
                 .construct_kinetic()
                 .get_kinetic()
             )
             movie.add_export_data(kin.MSD.model(msd.table))
 
             rayd = (
-                kin.Director(kin.RayD(metadata, cluster.onestep_SDs))
+                kin.Director(kin.RayD(metadata, diffusion.onestep_SDs))
                 .construct_kinetic()
                 .get_kinetic()
             )
