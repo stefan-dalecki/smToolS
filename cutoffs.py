@@ -358,7 +358,7 @@ class Diffusion:
                             * self.metadata.pixel_size**2
                             / (4 * self.metadata.framestep_size)
                         )
-                        if diff_coeff1 <= 1e-9 or diff_coeff1 >= 3e-8:
+                        if diff_coeff1 <= 2e-9 or diff_coeff1 >= 3e-8:
                             df.drop(
                                 df.loc[df["Trajectory"] == trajectory].index,
                                 inplace=True,
