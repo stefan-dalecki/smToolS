@@ -226,7 +226,7 @@ class ScatteredLine:
                 + f" {self.model.kinetic.unit}"
             )
         ax1_label.rstrip("\n")
-        ax1_label += f"\nR2: {self.model.R2}"
+        ax1_label += "{0:.3f}".format(self.model.R2)
         ax1.plot(
             x_data,
             self.model.equation(x_data, *self.model.popt),
