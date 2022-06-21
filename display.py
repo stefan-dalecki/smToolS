@@ -1,5 +1,6 @@
 """Display figures"""
 
+from math import ceil
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.ticker import PercentFormatter, MultipleLocator
@@ -16,13 +17,12 @@ class BrightnessHistogram:
         self,
         data: list,
         *,
-        bins: int = 70,
         x_label: str = "Intensity / Brightness",
         y_label: str = "Frequency",
         title: str = "Binned Brightness",
     ) -> None:
         self._data = data
-        self._bins = bins
+        self._bins = ceil(max(data)) * 10
         self._x_label = x_label
         self._y_label = y_label
         self._title = title

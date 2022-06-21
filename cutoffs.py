@@ -19,7 +19,7 @@ class Clustering:
     class Clustering:
         """K-means clustering thresholding"""
 
-    def __init__(self, metadata, df: pd.DataFrame) -> None:
+    def __init__(self, metadata: object, df: pd.DataFrame) -> None:
 
         """Initialize clustering object
 
@@ -135,9 +135,9 @@ class Brightness:
 
     def __init__(
         self,
-        metadata,
+        metadata: object,
         df: pd.DataFrame,
-        method=None,
+        method: str = None,
     ) -> None:
         """Initialize brightness object
 
@@ -266,7 +266,9 @@ class Brightness:
 class Length:
     """Remove too short of trajectories"""
 
-    def __init__(self, metadata, df: pd.DataFrame, *, method: str = None) -> None:
+    def __init__(
+        self, metadata: object, df: pd.DataFrame, *, method: str = None
+    ) -> None:
         """Initialize lenght object
 
         Args:
@@ -309,7 +311,7 @@ class Length:
 class Diffusion:
     """Diffusion cutoffs"""
 
-    def __init__(self, metadata, df: pd.DataFrame) -> None:
+    def __init__(self, metadata: object, df: pd.DataFrame) -> None:
         """Initialize diffusion object
 
         Args:
@@ -356,7 +358,7 @@ class Diffusion:
                             * self.metadata.pixel_size**2
                             / (4 * self.metadata.framestep_size)
                         )
-                        if diff_coeff1 <= 1e-9 or diff_coeff1 >= 3e-8:
+                        if diff_coeff1 <= 2e-9 or diff_coeff1 >= 3e-8:
                             df.drop(
                                 df.loc[df["Trajectory"] == trajectory].index,
                                 inplace=True,
