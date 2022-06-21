@@ -394,7 +394,7 @@ class Equations:
 
         Args:
             t (float): independent time variable
-            a (flaot): population constant
+            a (float): population constant
             b (float): population constant
             c (float): population constant
             tau1 (float): time constant
