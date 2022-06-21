@@ -186,7 +186,7 @@ class Brightness:
                 rm_outliers_df["Trajectory"].isin(list_high)
             ]
             rm_df = rm_outliers_df.reset_index(drop=True)
-            print(fo.Calc.trajectory_count(rm_df))
+            print(f"Trajectories Remaining : {fo.Calc.trajectory_count(rm_df)}")
             move_on = input("Choose new cutoffs (0) or continue? (1) : ")
             if move_on == "1":
                 break
