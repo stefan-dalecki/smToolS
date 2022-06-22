@@ -31,7 +31,7 @@ class MetaData:
         self.framestep_size = framestep_size
         self.frame_cutoff = frame_cutoff
 
-    def modify(self, **kwargs):
+    def modify(self, **kwargs) -> object:
         """Temporarily modify metadata
 
         Returns:
@@ -318,7 +318,7 @@ class Export:
 
     export_file_types = ["csv", "xlsx"]
 
-    def __init__(self, script, df: pd.DataFrame) -> None:
+    def __init__(self, script: object, df: pd.DataFrame) -> None:
         """Initialize export class object
 
         Args:
