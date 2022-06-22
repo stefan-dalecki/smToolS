@@ -134,7 +134,7 @@ class ThreeDScatter:
 class ScatteredLine:
     """Line overlaying scatter data"""
 
-    def __init__(self, model):
+    def __init__(self, model: object) -> None:
         """Initialize plot object
 
         Args:
@@ -223,10 +223,10 @@ class ScatteredLine:
                 str(time_constant)
                 + " \u00B1 "
                 + str(time_constant_covariance)
-                + f" {self.model.kinetic.unit}"
+                + f" {self.model.kinetic.unit}\n"
             )
         ax1_label.rstrip("\n")
-        ax1_label += "{0:.3f}".format(self.model.R2)
+        ax1_label += "\nR\u00b2 : {0:.3}".format(self.model.R2)
         ax1.plot(
             x_data,
             self.model.equation(x_data, *self.model.popt),
