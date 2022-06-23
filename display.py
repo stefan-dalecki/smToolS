@@ -48,7 +48,7 @@ class BrightnessHistogram:
             thispatch.set_facecolor(color)
         ax2 = axs.twinx()
         ax2.yaxis.set_major_formatter(PercentFormatter(xmax=len(self._data) / 100))
-        plt.show()
+        plt.show(block=False)
 
 
 class ThreeDScatter:
