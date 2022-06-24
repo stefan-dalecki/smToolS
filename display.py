@@ -82,6 +82,7 @@ class ThreeDScatter:
 
     def plot(self) -> None:
         """Plot the figure"""
+        plt.close()
         fig = plt.figure(figsize=(8, 8))
         ax = fig.add_subplot(projection="3d")
         # x_min = int(np.min(self._x.values))
@@ -115,11 +116,11 @@ class ThreeDScatter:
             self._y,
             self._z,
             c=self._df["Cluster"],
-            cmap="turbo",
+            cmap="Dark2",
         )
         ax.view_init(30, 60)
         plt.legend(*sc.legend_elements(), title="Group ID")
-        plt.show()
+        plt.show(block=False)
 
 
 # class MSDLine:

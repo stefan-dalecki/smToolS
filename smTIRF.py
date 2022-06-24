@@ -8,6 +8,7 @@ import cutoffs as cut
 import curvefitting as cf
 import inout as io
 import kinetics as kin
+import formulas as fo
 
 
 def main(file: tuple) -> pd.DataFrame:
@@ -26,62 +27,67 @@ def main(file: tuple) -> pd.DataFrame:
 
         movie_path, trajectories = file
         movie = io.Movie(metadata, movie_path, trajectories)
+        movie.update_trajectory_df(new_df=fo.Calc.trio(metadata, movie.data_df))
 
         if script.boolprint:
-            print("   Beginning Cutoffs")
+            print(
+                f"   Beginning ---{script.cutoff_method.capitalize()}--- Method Cutoffs"
+            )
 
         if script.cutoff_method == "none":
             pass
 
         elif script.cutoff_method == "clustering":
             cluster = cut.Clustering(metadata, movie.data_df)
-            cluster.add_parameters().estimate_clusters().display().cluster()
+            cluster.scale_features().estimate_clusters().display().cluster()
             metadata.__setattr__("frame_cutoff", cluster.min_length)
-            diffusion = cut.Diffusion(metadata, cluster.cutoff_df)
-            movie.update_trajectory_df(new_df=diffusion.cutoff_df)
-            bsl = (
-                kin.Director(kin.BSL(metadata, diffusion.cutoff_df))
-                .construct_kinetic()
-                .get_kinetic()
-            )
-            msd = (
-                kin.Director(kin.MSD(metadata, diffusion.cutoff_df))
-                .construct_kinetic()
-                .get_kinetic()
-            )
-            movie.add_export_data(kin.MSD.model(msd.table))
+            movie.update_trajectory_df(new_df=cluster.cutoff_df)
+            # bsl = (
+            #     kin.Director(kin.BSL(metadata, diffusion.cutoff_df))
+            #     .construct_kinetic()
+            #     .get_kinetic()
+            # )
+            # msd = (
+            #     kin.Director(kin.MSD(metadata, diffusion.cutoff_df))
+            #     .construct_kinetic()
+            #     .get_kinetic()
+            # )
+            # movie.add_export_data(kin.MSD.model(msd.table))
 
-            rayd = (
-                kin.Director(kin.RayD(metadata, diffusion.onestep_SDs))
-                .construct_kinetic()
-                .get_kinetic()
-            )
+            # rayd = (
+            #     kin.Director(kin.RayD(metadata, diffusion.onestep_SDs))
+            #     .construct_kinetic()
+            #     .get_kinetic()
+            # )
 
         else:
             brightness = cut.Brightness(metadata, movie.data_df, script.cutoff_method)
             movie.update_trajectory_df(new_df=brightness.cutoff_df)
             minimum_length = cut.Length(metadata, movie.data_df, method="minimum")
-            remove_length = cut.Length(metadata, movie.data_df, method="subtract")
             movie.update_trajectory_df(new_df=minimum_length.cutoff_df)
-            ml_diffusion = cut.Diffusion(metadata, movie.data_df)
-            # rm_diffusion = cut.Diffusion(metadata, remove_length.cutoff_df)
-            bsl = (
-                kin.Director(kin.BSL(metadata, ml_diffusion.cutoff_df))
-                .construct_kinetic()
-                .get_kinetic()
-            )
-            msd = (
-                kin.Director(kin.MSD(metadata, ml_diffusion.cutoff_df))
-                .construct_kinetic()
-                .get_kinetic()
-            )
-            movie.add_export_data(kin.MSD.model(msd.table))
 
-            rayd = (
-                kin.Director(kin.RayD(metadata, ml_diffusion.onestep_SDs))
-                .construct_kinetic()
-                .get_kinetic()
-            )
+        diffusion = cut.Diffusion(metadata, movie.data_df)
+        movie.update_trajectory_df(new_df=diffusion.cutoff_df)
+
+        print(movie.data_df.head())
+
+        bsl = (
+            kin.Director(kin.BSL(metadata, movie.data_df))
+            .construct_kinetic()
+            .get_kinetic()
+        )
+        msd = (
+            kin.Director(kin.MSD(metadata, movie.data_df))
+            .construct_kinetic()
+            .get_kinetic()
+        )
+        movie.add_export_data(kin.MSD.model(msd.table))
+
+        rayd = (
+            kin.Director(kin.RayD(metadata, movie.data_df["SDs"].dropna()))
+            .construct_kinetic()
+            .get_kinetic()
+        )
 
         if script.boolprint:
             print("   Kinetics constructed\n")
@@ -162,7 +168,6 @@ if __name__ == "__main__":
     script.establish_constants()
     script.generate_filelist()
     file_dictionary = io.FileReader(script.filetype, script.filelist)
-    print(script.cutoff_method)
     if script.parallel_process:
         dfs = io.Script.batching(main, file_dictionary.pre_processed_files)
     else:

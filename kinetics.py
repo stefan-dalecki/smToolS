@@ -159,54 +159,19 @@ class MSD(KineticBuilder):
 
     def dataformat(self) -> None:
         """Format trajectory dataframe for linear fitting"""
-        all_SDs = defaultdict(list)
-        mean_SDs = pd.DataFrame(columns=["Step Length", "MSD"])
-        onestep_SDs = []
-        for trajectory in self._df["Trajectory"].unique():
-            SD_SL1 = []
-            t_rows = self._df[self._df["Trajectory"] == trajectory]
-            x_col = t_rows["x"].values
-            y_col = t_rows["y"].values
-            if len(t_rows - 3) > 8:
-                max_step_len = 8
-            else:
-                max_step_len = len(t_rows - 3)
-            for step_len in range(1, max_step_len + 1):
-                for step_num in range(0, len(t_rows) - step_len - 1):
-                    x1, y1 = x_col[step_num], y_col[step_num]
-                    x2, y2 = x_col[step_num + step_len], y_col[step_num + step_len]
-                    squared_distance = fo.Calc.distance(x1, y1, x2, y2) ** 2
-                    if step_len == 1:
-                        SD_SL1.append(squared_distance)
-                if step_len == 1:
-                    diff_coeff1 = (
-                        mean(SD_SL1)
-                        * self.metadata.pixel_size**2
-                        / (4 * self.metadata.framestep_size)
-                    )
-                    if diff_coeff1 <= 1e-9 or diff_coeff1 >= 3e-8:
-                        self._df.drop(
-                            self._df.loc[self._df["Trajectory"] == trajectory].index,
-                            inplace=True,
-                        )
-                        break
-                    else:
-                        onestep_SDs += [
-                            i ** (1 / 2) * self.metadata.pixel_size for i in SD_SL1
-                        ]
-                        all_SDs[step_len].append(squared_distance)
-                else:
-                    all_SDs[step_len].append(squared_distance)
-        for i in range(1, max_step_len + 1):
-            mean_steplen = (
-                mean(all_SDs[i])
-                * self.metadata.pixel_size**2
-                / (4 * self.metadata.framestep_size)
-            )
-            new_row = pd.DataFrame.from_dict(
-                {"Step Length": [i], "MSD": [mean_steplen]}
-            )
-            mean_SDs = pd.concat([mean_SDs, new_row])
+        df = self._df
+        step_diffusions = (
+            df.groupby("Trajectory")[["x", "y"]]
+            .apply(fo.Calc.all_steps, self.metadata)
+            .to_list()
+        )
+        result = defaultdict(list)
+        for traj in step_diffusions:
+            for step in traj:
+                result[step].extend(traj[step])
+        for i in range(1, 9):
+            result[i] = np.mean(result[i])
+        mean_SDs = pd.DataFrame(result.items(), columns=["Step Length", "MSD"])
         self.kinetic.table = mean_SDs
 
     @staticmethod
@@ -238,14 +203,14 @@ class RayD(KineticBuilder):
     """
 
     def __init__(self, metadata: object, datalist: list) -> None:
-        """_summary_
+        """Initialize Rayleigh Diffusion object
 
         Args:
             metadata (object): persistent metadata
             datalist (list): one step square displacements
         """
         self.metadata = metadata
-        self._datalist = datalist
+        self._datalist = [i ** (1 / 2) * self.metadata.pixel_size for i in datalist]
 
     def add_attributes(self) -> None:
         """Add name and unit"""
