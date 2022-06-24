@@ -30,9 +30,7 @@ def main(file: tuple) -> pd.DataFrame:
         movie.update_trajectory_df(new_df=fo.Calc.trio(metadata, movie.data_df))
 
         if script.boolprint:
-            print(
-                f"   Beginning ---{script.cutoff_method.capitalize()}--- Method Cutoffs"
-            )
+            print(f"   Beginning ---{script.cutoff_method}--- Method Cutoffs\n")
 
         if script.cutoff_method == "none":
             pass
@@ -68,6 +66,9 @@ def main(file: tuple) -> pd.DataFrame:
 
         diffusion = cut.Diffusion(metadata, movie.data_df)
         movie.update_trajectory_df(new_df=diffusion.cutoff_df)
+
+        if script.boolprint:
+            print("   Constructing kinetics\n")
 
         bsl = (
             kin.Director(kin.BSL(metadata, movie.data_df))
