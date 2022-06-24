@@ -69,8 +69,6 @@ def main(file: tuple) -> pd.DataFrame:
         diffusion = cut.Diffusion(metadata, movie.data_df)
         movie.update_trajectory_df(new_df=diffusion.cutoff_df)
 
-        print(movie.data_df.head())
-
         bsl = (
             kin.Director(kin.BSL(metadata, movie.data_df))
             .construct_kinetic()
