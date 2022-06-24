@@ -1,12 +1,9 @@
 """Filter trajectory data"""
 
-from collections import defaultdict
-from statistics import mean
 from copy import deepcopy
 import numpy as np
 import pandas as pd
 from kneed import KneeLocator
-import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
@@ -30,25 +27,26 @@ class Clustering:
         self.metadata = metadata
         self._df = df
         self.cluster_data = None
-        self._n_clusters = None
+        self._scaled_features = None
         self._kmeans_kwargs = None
         self.suggested_clusters = {"Elbow": None, "Silhouette": None}
-        self.onestep_SDs = []
-        self._scaled_features = None
+        self._n_clusters = None
         self._cluster_of_interest = None
-        self.min_length = None
         self.cutoff_df = None
+        self.min_length = None
 
     def scale_features(self) -> None:
-        print(self._df.columns)
-        self.cluster_data = self._df[
-            [
-                "Trajectory",
-                "Average_Brightness",
-                "Length (frames)",
-                "Diffusion (\u03BCm\u00b2/sec)",
+        self.cluster_data = (
+            self._df[
+                [
+                    "Average_Brightness",
+                    "Length (frames)",
+                    "MSD",
+                ]
             ]
-        ]
+            .drop_duplicates()
+            .reset_index(drop=True)
+        )
         scaler = StandardScaler()
         self._scaled_features = scaler.fit_transform(self.cluster_data)
         return self
@@ -74,7 +72,7 @@ class Clustering:
         self.suggested_clusters["Elbow"] = knee
         silhouette = silhouette_scores.index(max(silhouette_scores))
         self.suggested_clusters["Silhouette"] = silhouette
-        print(f"Suggested Clusters : \n{self.suggested_clusters}")
+        print(f"Suggested Clusters : \n   {self.suggested_clusters}")
         return self
 
     def display(self) -> None:
@@ -218,7 +216,6 @@ class Brightness:
             else:
                 groups += 1
                 continue
-        print(rm_df.head())
         self.cutoff_df = rm_df
 
 
@@ -270,18 +267,27 @@ class Length:
 class Diffusion:
     """Diffusion cutoffs"""
 
-    def __init__(self, metadata: object, df: pd.DataFrame) -> None:
+    def __init__(
+        self,
+        metadata: object,
+        df: pd.DataFrame,
+        *,
+        low: float = 0.2,
+        high: float = 3.5,
+    ) -> None:
         """Initialize diffusion object
 
         Args:
             metadata (class object): persistent metadata
             df (pd.DataFrame): trajectory data
+            low (float): low cutoff value (um^2/sec)
+            high (float): high cutoff value (um^2/sec)
         """
         self.metadata = metadata
         self._df = df
+        self._low = low
+        self._high = high
         self.cutoff_df = None
-        self.mean_SDs = None
-        self.onestep_SDs = None
         self()
 
     def __call__(self) -> None:
@@ -291,55 +297,6 @@ class Diffusion:
     def displacement(self) -> None:
         """Use mean square displacement to filter trajectories"""
         df = self._df
-        # all_SDs = defaultdict(list)
-        # mean_SDs = pd.DataFrame(columns=["Step Length", "MSD"])
-        # onestep_SDs = []
-        # for trajectory in df["Trajectory"].unique():
-        #     t_rows = df[df["Trajectory"] == trajectory]
-        #     if len(t_rows) > 4:
-        #         SD_SL1 = []
-        #         x_col = t_rows["x"].values
-        #         y_col = t_rows["y"].values
-        #         if len(t_rows - 3) > 8:
-        #             max_step_len = 8
-        #         else:
-        #             max_step_len = len(t_rows - 3)
-        #         for step_len in range(1, max_step_len + 1):
-        #             for step_num in range(0, len(t_rows) - step_len - 1):
-        #                 x1, y1 = x_col[step_num], y_col[step_num]
-        #                 x2, y2 = x_col[step_num + step_len], y_col[step_num + step_len]
-        #                 squared_distance = fo.Calc.distance(x1, y1, x2, y2) ** 2
-        #                 if step_len == 1:
-        #                     SD_SL1.append(squared_distance)
-        #             if step_len == 1:
-        #                 diff_coeff1 = (
-        #                     mean(SD_SL1)
-        #                     * self.metadata.pixel_size**2
-        #                     / (4 * self.metadata.framestep_size)
-        #                 )
-        #                 if diff_coeff1 <= 2e-9 or diff_coeff1 >= 3e-8:
-        #                     df.drop(
-        #                         df.loc[df["Trajectory"] == trajectory].index,
-        #                         inplace=True,
-        #                     )
-        #                     break
-        #                 else:
-        #                     onestep_SDs += [
-        #                         i ** (1 / 2) * self.metadata.pixel_size for i in SD_SL1
-        #                     ]
-        #                     all_SDs[step_len].append(squared_distance)
-        #             else:
-        #                 all_SDs[step_len].append(squared_distance)
-        # for i in range(1, max_step_len + 1):
-        #     mean_steplen = (
-        #         mean(all_SDs[i])
-        #         * self.metadata.pixel_size**2
-        #         / (4 * self.metadata.framestep_size)
-        #     )
-        #     new_row = pd.DataFrame.from_dict(
-        #         {"Step Length": [i], "MSD": [mean_steplen]}
-        #     )
-        #     mean_SDs = pd.concat([mean_SDs, new_row])
-        # self.mean_SDs = mean_SDs
-        # self.onestep_SDs = onestep_SDs
-        self.cutoff_df = df
+        rm_outliers_df = df[df["MSD"].between(self._low, self._high)]
+        rm_df = rm_outliers_df.reset_index(drop=True)
+        self.cutoff_df = rm_df
