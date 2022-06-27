@@ -123,13 +123,35 @@ class ThreeDScatter:
         plt.show(block=False)
 
 
-# class MSDLine:
-#     def __init__(self, df: pd.DataFrame) -> None:
-#         self.data = df
-#         self._x_label = None
+class MSDLine:
+    def __init__(self, kinetic: object, df: pd.DataFrame, line: object) -> None:
+        self._kinetic = kinetic
+        self._data = df
+        self._line = line
+        self._x = None
+        self._x_label = None
+        self._y = None
+        self._y_label = None
 
-#     def display(self):
-#         pass
+    def set_attributes(self) -> None:
+        """set figure attributes"""
+        self._x = self._df.iloc[:, 0]
+        self._x_label = self._x.name
+        self._y = self._df.iloc[:, 1]
+        self._y_label = self._y.name
+
+    def plot(self):
+        x_data = self._x.values.astype(float)
+        y_data = self._y.values.astype(float)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5), tight_layout=True)
+        fig.suptitle(f"{self._kinetic.name} ({self._kinetic.unit})")
+        fig.supxlabel(self._x_label)
+        fig.supylabe(self._y_label)
+        ax1.scatter(x_data, y_data, s=3, alpha=1, color="grey", label="Data")
+        ax1.set_title("Linear Regression")
+        ax1.plot(
+            x_data,
+        )
 
 
 class ScatteredLine:
