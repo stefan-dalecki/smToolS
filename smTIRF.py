@@ -68,7 +68,6 @@ def main(file: tuple) -> pd.DataFrame:
             .get_kinetic()
         )
         movie.add_export_data(kin.MSD.model(msd.table))
-        print(kin.MSD.model(msd.table))
         rayd = (
             kin.Director(kin.RayD(metadata, movie.data_df["SDs"].dropna()))
             .construct_kinetic()
