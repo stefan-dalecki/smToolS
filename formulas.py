@@ -114,7 +114,11 @@ class Calc:
             for step_num in range(0, len(df) - step_len - 1):
                 x1, y1 = x_col[step_num], y_col[step_num]
                 x2, y2 = x_col[step_num + step_len], y_col[step_num + step_len]
-                distance = Calc.distance(x1, y1, x2, y2) * metadata.pixel_size
+                distance = (
+                    Calc.distance(x1, y1, x2, y2) ** 2
+                    * metadata.pixel_size**2
+                    / (4 * metadata.framestep_size)
+                )
                 all_steps[step_len].append(distance)
         return all_steps
 
