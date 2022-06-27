@@ -33,30 +33,14 @@ def main(file: tuple) -> pd.DataFrame:
             print(f"   Beginning ---{script.cutoff_method}--- Method Cutoffs\n")
 
         if script.cutoff_method == "none":
-            pass
+            minimum_length = cut.Length(metadata, movie.data_df, method="minimum")
+            movie.update_trajectory_df(new_df=minimum_length.cutoff_df)
 
         elif script.cutoff_method == "clustering":
             cluster = cut.Clustering(metadata, movie.data_df)
             cluster.scale_features().estimate_clusters().display().cluster()
             metadata.__setattr__("frame_cutoff", cluster.min_length)
             movie.update_trajectory_df(new_df=cluster.cutoff_df)
-            # bsl = (
-            #     kin.Director(kin.BSL(metadata, diffusion.cutoff_df))
-            #     .construct_kinetic()
-            #     .get_kinetic()
-            # )
-            # msd = (
-            #     kin.Director(kin.MSD(metadata, diffusion.cutoff_df))
-            #     .construct_kinetic()
-            #     .get_kinetic()
-            # )
-            # movie.add_export_data(kin.MSD.model(msd.table))
-
-            # rayd = (
-            #     kin.Director(kin.RayD(metadata, diffusion.onestep_SDs))
-            #     .construct_kinetic()
-            #     .get_kinetic()
-            # )
 
         else:
             brightness = cut.Brightness(metadata, movie.data_df, script.cutoff_method)
@@ -66,6 +50,9 @@ def main(file: tuple) -> pd.DataFrame:
 
         diffusion = cut.Diffusion(metadata, movie.data_df)
         movie.update_trajectory_df(new_df=diffusion.cutoff_df)
+        movie.add_export_data(
+            {"Trajectories (#)": fo.Calc.trajectory_count(movie.data_df)}
+        )
 
         if script.boolprint:
             print("   Constructing kinetics\n")
@@ -81,7 +68,7 @@ def main(file: tuple) -> pd.DataFrame:
             .get_kinetic()
         )
         movie.add_export_data(kin.MSD.model(msd.table))
-
+        print(kin.MSD.model(msd.table))
         rayd = (
             kin.Director(kin.RayD(metadata, movie.data_df["SDs"].dropna()))
             .construct_kinetic()
