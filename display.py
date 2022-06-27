@@ -260,3 +260,4 @@ class ScatteredLine:
             )
         if display:
             plt.show()
+        plt.close()
