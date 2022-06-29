@@ -272,7 +272,7 @@ class Diffusion:
         metadata: object,
         df: pd.DataFrame,
         *,
-        low: float = 0.2,
+        low: float = 0.25,
         high: float = 3.5,
     ) -> None:
         """Initialize diffusion object
@@ -292,7 +292,9 @@ class Diffusion:
 
     def __call__(self) -> None:
         """Call displacement cutoff function"""
+        print("Beginning Diffusion cutoffs")
         self.displacement()
+        print("Diffusion cutoffs completed")
 
     def displacement(self) -> None:
         """Use mean square displacement to filter trajectories"""
