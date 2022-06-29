@@ -126,7 +126,7 @@ class ThreeDScatter:
 class MSDLine:
     def __init__(self, kinetic: object, df: pd.DataFrame, line: object) -> None:
         self._kinetic = kinetic
-        self._data = df
+        self._df = df
         self._line = line
         self._x = None
         self._x_label = None
