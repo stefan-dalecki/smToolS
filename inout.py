@@ -18,7 +18,7 @@ class MetaData:
         *,
         pixel_size: float = 0.000024,
         framestep_size: float = 0.0217,
-        frame_cutoff: int = 10,
+        frame_cutoff: int = 9,
     ) -> None:
         """Initialize microscope parameters
 
