@@ -31,7 +31,7 @@ class MetaData:
         self.framestep_size = framestep_size
         self.frame_cutoff = frame_cutoff
 
-    def modify(self, **kwargs) -> object:
+    def modify(self, **kwargs: dict[str, float or int]) -> object:
         """Temporarily modify metadata
 
         Returns:
@@ -263,11 +263,13 @@ class Movie(RawDataFrame):
         RawDataFrame (class): creates average trajectory brightness column
     """
 
-    def __init__(self, metadata, filepath: str, trajectory_df: pd.DataFrame) -> None:
+    def __init__(
+        self, metadata: object, filepath: str, trajectory_df: pd.DataFrame
+    ) -> None:
         """Initialize movie object
 
         Args:
-            metadata (class object): persistent metadata
+            metadata (object): persistent metadata
             filepath (string): full file location
             trajectory_df (pd.DataFrame): initial trajectory data
         """
