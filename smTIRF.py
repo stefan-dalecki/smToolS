@@ -9,8 +9,10 @@ import curvefitting as cf
 import inout as io
 import kinetics as kin
 import formulas as fo
+import decorators as dec
 
 
+@dec.Progress.details
 def main(file: tuple) -> pd.DataFrame:
     """Main processing pipeline
 
@@ -22,15 +24,14 @@ def main(file: tuple) -> pd.DataFrame:
     """
 
     try:
-        if script.boolprint:
-            print("\nBEGINNING Analysis\n")
-
         movie_path, trajectories = file
         movie = io.Movie(metadata, movie_path, trajectories)
         movie.update_trajectory_df(new_df=fo.Calc.trio(metadata, movie.data_df))
 
-        if script.boolprint:
-            print(f"   Beginning ---{script.cutoff_method}--- Method Cutoffs\n")
+        print(
+            f"   Beginning --- {script.cutoff_method} --- Method Cutoffs",
+            end="\n" * 2,
+        )
 
         if script.cutoff_method == "none":
             minimum_length = cut.Length(metadata, movie.data_df, method="minimum")
@@ -54,8 +55,12 @@ def main(file: tuple) -> pd.DataFrame:
             {"Trajectories (#)": fo.Calc.trajectory_count(movie.data_df)}
         )
 
-        if script.boolprint:
-            print("   Constructing kinetics\n")
+        print(
+            f"   Completed --- {script.cutoff_method} --- Method Cutoffs",
+            end="\n" * 2,
+        )
+
+        print("   Constructing kinetics")
 
         bsl = (
             kin.Director(kin.BSL(metadata, movie.data_df))
@@ -74,11 +79,9 @@ def main(file: tuple) -> pd.DataFrame:
             .get_kinetic()
         )
 
-        if script.boolprint:
-            print("   Kinetics constructed\n")
+        print("   Kinetics constructed", end="\n" * 2)
 
-        if script.boolprint:
-            print("   Building models")
+        print("   Building models")
 
         OneCompExpDecay = (
             cf.Director(
@@ -121,12 +124,7 @@ def main(file: tuple) -> pd.DataFrame:
         )
         movie.add_export_data(TwoCompRayleigh.dictify())
 
-        if script.boolprint:
-            print(
-                "   Models built\n",
-                "Analysis COMPLETE\n",
-                sep="\n",
-            )
+        print("   Models built", end="\n" * 2)
 
         if script.booldisplay or script.boolsave:
             OneCompExpDecay.generate_plot(script.booldisplay, script.boolsave)

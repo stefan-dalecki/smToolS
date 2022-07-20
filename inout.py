@@ -75,7 +75,6 @@ class Script:
         self.rootdir = None
         self.parallel_process = False
         self.cutoff_method = None
-        self.boolprint = False
         self.booldisplay = False
         self.boolsave = False
         self.filelist = None
@@ -89,7 +88,6 @@ class Script:
         self.savefile = os.path.join(self.rootdir, input("\nName your output file: "))
         if self.parallel_process:
             self.cutoff_method = "auto"
-            self.boolprint = False
             self.booldisplay = False
         else:
             brightness_options = (
@@ -109,7 +107,7 @@ class Script:
                     input("High cutoff : ")
                 )
                 self.cutoff_method = {"semi_auto": (low_cut, high_cut)}
-            self.boolprint = fo.Form.inputbool("Print progress?")
+            # self.boolprint = fo.Form.inputbool("Print progress?")
             self.booldisplay = fo.Form.inputbool("Display figures?")
         self.boolsave = fo.Form.inputbool("Save figures?")
 

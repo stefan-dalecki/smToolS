@@ -1,4 +1,5 @@
 """Filter trajectory data"""
+###Future task: convert various methods to builder design
 
 from copy import deepcopy
 import numpy as np
@@ -9,6 +10,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import display as di
 import formulas as fo
+import decorators as dec
 
 
 class Clustering:
@@ -128,6 +130,7 @@ class Brightness:
         self._method = method
         self()
 
+    @dec.Progress.start_finish(indent=2, action="Brightness", ending="Cutoffs")
     def __call__(self) -> None:
         """Calls chosen brightness thresholding method"""
         if "semi_auto" in self._method:
@@ -242,6 +245,7 @@ class Length:
         self.cutoff_df = None
         self()
 
+    @dec.Progress.start_finish(indent=2, action="Length", ending="Cutoffs")
     def __call__(self) -> None:
         """Call length filtering method"""
         func = getattr(Length, self._method)
@@ -290,11 +294,10 @@ class Diffusion:
         self.cutoff_df = None
         self()
 
+    @dec.Progress.start_finish(indent=2, action="Diffusion", ending="Cutoffs")
     def __call__(self) -> None:
         """Call displacement cutoff function"""
-        print("Beginning Diffusion cutoffs")
         self.displacement()
-        print("Diffusion cutoffs completed")
 
     def displacement(self) -> None:
         """Use mean square displacement to filter trajectories"""

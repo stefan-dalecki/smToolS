@@ -1,12 +1,11 @@
 """Biophysical kinetics"""
 
-from statistics import pstdev
 from collections import defaultdict
-from statistics import mean
 import pandas as pd
 import numpy as np
 from scipy import stats
 import formulas as fo
+import decorators as dec
 
 
 class Kinetic:
