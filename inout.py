@@ -2,6 +2,7 @@
 
 import os
 import copy
+import warnings
 from tkinter import filedialog
 from tkinter import *
 import numpy as np
@@ -69,7 +70,7 @@ class Script:
             none
 
         """
-        self._filetype_options = ["csv", "nd2"]
+        self._filetype_options = ["csv", "nd2", "hdf5"]
         self.filetype = None
         self.savefile = None
         self.rootdir = None
@@ -182,7 +183,11 @@ class FileReader:
         """Processes csv files"""
         for file in self._rawfiles:
             track_df = pd.read_csv(file, index_col=[0])
-            track_df.rename(columns={"m2": "Brightness"}, inplace=True)
+            track_df.rename(
+                columns={"paricle": "Trajectory", "frame": "Frame", "m2": "Brightness"},
+                inplace=True,
+            )
+
             self.pre_processed_files += [(file, track_df)]
 
     def process_nd2(self) -> None:
@@ -190,6 +195,7 @@ class FileReader:
         from nd2reader import ND2Reader
         import trackpy as tp
 
+        warnings.filterwarnings("ignore", category=UserWarning)
         tp.quiet()
         DIAMETER = 9
         MOVEMENT = 10
@@ -201,18 +207,19 @@ class FileReader:
                     low_mass = np.mean([np.median(i) for i in movie])
                     with tp.PandasHDFStoreBig(h5_file_str) as s:
                         print(
-                            "Beginning Batch Processing",
+                            "\nBeginning ND2 Processing",
                             sep=2 * "\n",
                         )
-                        tp.batch(
-                            movie,
-                            DIAMETER,
-                            minmass=low_mass,
-                            max_iterations=3,
-                            output=s,
-                        )
+                        for image in movie:
+                            features = tp.locate(
+                                image,
+                                diameter=DIAMETER,
+                                minmass=low_mass,
+                                max_iterations=3,
+                            )
+                            s.put(features)
                         print(
-                            "Batch Processing Complete",
+                            "ND2 Processing Complete",
                             "Beginning Trajectory Linking",
                             sep=2 * "\n",
                         )
@@ -226,13 +233,24 @@ class FileReader:
                             s.put(linked)
                         track_df = pd.concat(s)
                         track_df = fo.Form.reorder(track_df, "x", 0)
-                        track_df.rename(columns={"mass": "Brightness"}, inplace=True)
-                        track_df = track_df.reset_index(drop=True)
+                        track_df.rename(
+                            columns={
+                                "particle": "Trajectory",
+                                "frame": "Frame",
+                                "mass": "Brightness",
+                            },
+                            inplace=True,
+                        )
+                        track_df = track_df.sort_values(
+                            ["Trajectory", "Frame"]
+                        ).reset_index(drop=True)
                         print("Trajectory Linking Complete")
                         self.pre_processed_files += [(file, track_df)]
-            else:
-                track_df = pd.concat(tp.PandasHDFStoreBig(h5_file_str))
-                self.pre_processed_files += [(file, track_df)]
+
+    def process_hdf5(self):
+        for file in self._rawfiles:
+            track_df = pd.concat(file)
+            self.pre_processed_files += [(file, track_df)]
 
 
 class RawDataFrame:
