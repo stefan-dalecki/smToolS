@@ -187,60 +187,52 @@ class FileReader:
 
     def process_nd2(self) -> None:
         """Processes nd2 files"""
-        from pims import ND2Reader_SDK
+        from nd2reader import ND2Reader
         import trackpy as tp
 
         tp.quiet()
-        power_through_it = True
-        DIAMETER = 7
-        ATTEMPTS = 0
+        DIAMETER = 9
         MOVEMENT = 10
         MEMORY = 1
         for file in self._rawfiles:
-            while power_through_it:
-                with ND2Reader_SDK(file) as movie:
-                    try:
-                        if os.path.exists("data.h5"):
-                            os.remove("data.h5")
-                        low_mass = np.mean([np.median(i) for i in movie])
-                        with tp.PandasHDFStoreBig("data.h5") as s:
-                            print(
-                                "Beginning Batch Processing",
-                                sep=2 * "\n",
-                            )
-                            tp.batch(
-                                movie,
-                                DIAMETER,
-                                minmass=low_mass,
-                                max_iterations=3,
-                                output=s,
-                            )
-                            print(
-                                "Batch Processing Complete",
-                                "Beginning Trajectory Linking",
-                                sep=2 * "\n",
-                            )
-                            pred = tp.predict.NearestVelocityPredict()
-                            for linked in pred.link_df_iter(
-                                s,
-                                search_range=MOVEMENT,
-                                memory=MEMORY,
-                                neighbor_strategy="BTree",
-                            ):
-                                s.put(linked)
-                            track_df = pd.concat(s)
-                            track_df = fo.Form.reorder(track_df, "x", 0)
-                            track_df.rename(
-                                columns={"mass": "Brightness"}, inplace=True
-                            )
-                            track_df = track_df.reset_index(drop=True)
-                            print("Trajectory Linking Complete")
-                            self.pre_processed_files += [(file, track_df)]
-                    except Exception:
-                        print("Occassionally this part has issues, trying again")
-                        ATTEMPTS += 1
-                        if ATTEMPTS > 10:
-                            power_through_it = False
+            h5_file_str = f"{file[:-4]}.h5"
+            if not os.path.exists(h5_file_str):
+                with ND2Reader(file) as movie:
+                    low_mass = np.mean([np.median(i) for i in movie])
+                    with tp.PandasHDFStoreBig(h5_file_str) as s:
+                        print(
+                            "Beginning Batch Processing",
+                            sep=2 * "\n",
+                        )
+                        tp.batch(
+                            movie,
+                            DIAMETER,
+                            minmass=low_mass,
+                            max_iterations=3,
+                            output=s,
+                        )
+                        print(
+                            "Batch Processing Complete",
+                            "Beginning Trajectory Linking",
+                            sep=2 * "\n",
+                        )
+                        pred = tp.predict.NearestVelocityPredict()
+                        for linked in pred.link_df_iter(
+                            s,
+                            search_range=MOVEMENT,
+                            memory=MEMORY,
+                            neighbor_strategy="BTree",
+                        ):
+                            s.put(linked)
+                        track_df = pd.concat(s)
+                        track_df = fo.Form.reorder(track_df, "x", 0)
+                        track_df.rename(columns={"mass": "Brightness"}, inplace=True)
+                        track_df = track_df.reset_index(drop=True)
+                        print("Trajectory Linking Complete")
+                        self.pre_processed_files += [(file, track_df)]
+            else:
+                track_df = pd.concat(tp.PandasHDFStoreBig(h5_file_str))
+                self.pre_processed_files += [(file, track_df)]
 
 
 class RawDataFrame:
