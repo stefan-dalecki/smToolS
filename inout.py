@@ -86,6 +86,7 @@ class Script:
         root = Tk()
         root.withdraw()
         self.rootdir = filedialog.askdirectory()
+        print(f"\nFile Directory chosen : {self.rootdir}")
         self.savefile = os.path.join(self.rootdir, input("\nName your output file: "))
         if self.parallel_process:
             self.cutoff_method = "auto"
