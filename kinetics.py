@@ -133,6 +133,7 @@ class MSD(KineticBuilder):
 
     def __init__(self, metadata: object, df: pd.DataFrame) -> None:
         """Initializes the MSD class object
+        Removes the first event in each trajectory
 
         Args:
             metadata (class object): persistent metadata based on microscope qualities
