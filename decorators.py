@@ -1,37 +1,10 @@
 """General use decorators for easier readability"""
 
-import time
 from typing import Callable
 
 
 class Progress:
-    """Decorator functions for tracking script progress"""
-
-    @staticmethod
-    def details(func: Callable):
-        """Gives details on overall script progress
-
-        Args:
-            func (Callable): main function in smTIRF.py file
-
-        Returns:
-            wrapper (Callable): inner wrapper function
-        """
-
-        def wrapper(*args, **kwargs):
-            """Inner wrapper function"""
-            begin = time.time()
-            print("Beginning Movie Analysis...", end="\n" * 2)
-            func(*args, **kwargs)
-            end = time.time()
-            print(
-                "Movie Analysis Completed",
-                f"Time elapsed : {(end - begin):.2f} sec",
-                sep="\n",
-                end="\n" * 3,
-            )
-
-        return wrapper
+    """Decorator function(s) for tracking script progress"""
 
     @staticmethod
     def start_finish(*, indent: int = 0, action: str, ending: str):

@@ -32,7 +32,8 @@ class Model:
         self.R2 = None
 
     def convert(self) -> None:
-        """Converts popt to proper units
+        """Converts popt, containing model coefficients to proper units
+        Uses metadata to add units proper units to various metrics
 
         Returns:
             self: converted data
@@ -73,6 +74,7 @@ class Model:
 
     def dictify(self) -> dict:
         """Format curve fitting data as a dictionary
+        Dictionary format is necessary for appending data to dataframe
 
         Returns:
             dict: export data for additional to central export data
@@ -133,6 +135,8 @@ class Director:
 
     def build_model(self) -> None:
         """Calls functions to build model
+        All these functions share across classes
+        allows for homogenous model object creation
 
         Returns:
             self: class object
@@ -161,7 +165,7 @@ class ModelBuilder:
         self.model = None
 
     def generate_model(self) -> None:
-        """Creates blank model object"""
+        """Establishes blank model object"""
         self.model = Model()
 
 
@@ -206,6 +210,8 @@ class ExpDecay(ModelBuilder):
 
     def set_equation(self) -> None:
         """Finds equation for fitting based on components
+        Equation selection is based on a string completion finder
+        It is necessary to carefully name models for finding algorithm
 
         Raises:
             TypeError: component value must be within class options
@@ -235,7 +241,9 @@ class ExpDecay(ModelBuilder):
             print("Component descriptor is not a valid type (int or str)")
 
     def set_guess(self) -> None:
-        """Set model fitting origin point"""
+        """Set model fitting origin point
+        Guesses are based on previous data
+        Biologic properties are good starting points for guesses"""
         tau_estimation = fo.Calc.e_estimation(self._df)
         if self._components == 1:
             self._guess = [tau_estimation]
@@ -307,7 +315,9 @@ class RayDiff(ModelBuilder):
         self._guess = None
 
     def set_equation(self) -> None:
-        """Choose equation for fitting based on components"""
+        """Finds equation for fitting based on components
+        Equation selection is based on a string completion finder
+        It is necessary to carefully name models for finding algorithm"""
         model_name = (
             f"{num2words(self._components).capitalize()}Comp{self.__class__.__name__}"
         )
@@ -320,7 +330,9 @@ class RayDiff(ModelBuilder):
         self.model.equation = self._equation
 
     def set_guess(self) -> None:
-        """First guess for model fitting"""
+        """Set model fitting origin point
+        Guesses are based on previous data
+        Biologic properties are good starting points for guesses"""
         try:
             if self._components == 1:
                 self._guess = [1e-4, 1e-5]
