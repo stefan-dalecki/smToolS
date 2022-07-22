@@ -2,19 +2,18 @@
 
 import traceback
 import sys
-from time import sleep
+from time import sleep, time
 import pandas as pd
 import cutoffs as cut
 import curvefitting as cf
 import inout as io
 import kinetics as kin
 import formulas as fo
-import decorators as dec
 
 
-@dec.Progress.details
 def main(file: tuple) -> pd.DataFrame:
     """Main processing pipeline
+    Reads in movies and calculates desired metrics based on trajectory data
 
     Args:
         file (tuple): filename and filedata tuple
@@ -24,6 +23,8 @@ def main(file: tuple) -> pd.DataFrame:
     """
 
     try:
+        print(f"\n{file[0]}", "Beginning Movie Analysis...", sep="\n" * 2, end="\n" * 2)
+        begin = time()
         movie_path, trajectories = file
         movie = io.Movie(metadata, movie_path, trajectories)
         movie.update_trajectory_df(new_df=fo.Calc.trio(metadata, movie.data_df))
@@ -131,6 +132,13 @@ def main(file: tuple) -> pd.DataFrame:
             TwoCompExpDecay.generate_plot(script.booldisplay, script.boolsave)
             OneCompRayleigh.generate_plot(script.booldisplay, script.boolsave)
             TwoCompRayleigh.generate_plot(script.booldisplay, script.boolsave)
+        end = time()
+        print(
+            "Movie Analysis Completed",
+            f"Time elapsed : {(end - begin):.2f} sec",
+            sep="\n",
+            end="\n" * 2,
+        )
 
     except RuntimeError as error:
         print(
