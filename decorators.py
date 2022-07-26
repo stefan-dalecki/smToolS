@@ -62,8 +62,9 @@ class Progress:
             def wrapper(*args, **kwargs):
                 """Inner wrapper function"""
                 print(f"{'   '*indent}Starting {action} {ending}")
-                func(*args, **kwargs)
+                function_result = func(*args, **kwargs)
                 print(f"{'   '*indent}Finished {action} {ending}", end="\n" * 2)
+                return function_result
 
             return wrapper
 
