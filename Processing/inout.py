@@ -19,7 +19,7 @@ class MetaData:
         *,
         pixel_size: float = 0.000024,
         framestep_size: float = 0.0217,
-        frame_cutoff: int = 9,
+        frame_cutoff: int = 10,
     ) -> None:
         """Initialize microscope parameters
 
@@ -258,7 +258,7 @@ class FileReader:
             self.pre_processed_files += [(file, track_df)]
 
 
-class Movie(RawDataFrame):
+class Movie:
     """Individual movie object class
 
     Args:
