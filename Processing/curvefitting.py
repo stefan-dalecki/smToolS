@@ -222,7 +222,7 @@ class ExpDecay(ModelBuilder):
                 self._equation = getattr(Equations, model_name)
                 NUM_LIMITS = len(signature(self._equation).parameters) - 1
                 self._limits = self._limits = (
-                    [0 for i in range(NUM_LIMITS)],
+                    [0.0 for i in range(NUM_LIMITS)],
                     [np.inf for i in range(NUM_LIMITS)],
                 )
 
@@ -273,7 +273,7 @@ class ExpDecay(ModelBuilder):
             self.model.pcov,
             self.model.residuals,
             self.model.R2,
-        ) = FitFunction.curve(self._df, self._equation, self._guess)
+        ) = FitFunction.curve(self._df, self._equation, self._guess, self._limits)
         self.model.sumsqr = np.sum(self.model.residuals**2)
 
 
@@ -324,7 +324,7 @@ class RayDiff(ModelBuilder):
         self._equation = getattr(Equations, model_name)
         NUM_LIMITS = len(signature(self._equation).parameters) - 1
         self._limits = (
-            [0 for i in range(NUM_LIMITS)],
+            [0.0 for i in range(NUM_LIMITS)],
             [np.inf for i in range(NUM_LIMITS)],
         )
         self.model.equation = self._equation
@@ -360,7 +360,7 @@ class RayDiff(ModelBuilder):
             self.model.pcov,
             self.model.residuals,
             self.model.R2,
-        ) = FitFunction.curve(self._df, self._equation, self._guess)
+        ) = FitFunction.curve(self._df, self._equation, self._guess, self._limits)
         self.model.sumsqr = np.sum(self.model.residuals**2)
 
 
@@ -501,7 +501,7 @@ class FitFunction:
         df: pd.DataFrame,
         equation: np.ndarray,
         p0: list[float],
-        limits: list[float] = None,
+        limits: tuple = None,
     ) -> tuple:
         """Fits curved data
 
