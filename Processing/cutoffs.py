@@ -150,9 +150,9 @@ class Brightness:
     def manual(self) -> None:
         """Manually set min and max brightness values"""
         df = self._df
+        histogram = di.BrightnessHistogram(df["Average_Brightness"].unique())
+        histogram.plot()
         while True:
-            histogram = di.BrightnessHistogram(df["Average_Brightness"].unique())
-            histogram.plot()
             low_out = float(input("Select the low brightness cutoff : "))
             high_out = float(input("Select the high brightness cutoff : "))
             rm_outliers_df = df[df["Average_Brightness"].between(low_out, high_out)]
