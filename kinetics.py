@@ -84,7 +84,6 @@ class BSL(KineticBuilder):
             metadata (class object): persistent metadata
             df (pd.DataFrame): trajectory data
         """
-        # Remove the first event in each trajectory
         self.metadata = metadata
         self._df = df
 

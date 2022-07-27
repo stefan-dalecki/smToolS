@@ -184,12 +184,16 @@ class FileReader:
         """Processes csv files"""
         for file in self._rawfiles:
             track_df = pd.read_csv(file, index_col=[0])
-            track_df.rename(
-                columns={"paricle": "Trajectory", "frame": "Frame", "m2": "Brightness"},
-                inplace=True,
-            )
-
-            self.pre_processed_files += [(file, track_df)]
+            if {"x", "y"} <= set(track_df.columns):
+                track_df.rename(
+                    columns={
+                        "paricle": "Trajectory",
+                        "frame": "Frame",
+                        "m2": "Brightness",
+                    },
+                    inplace=True,
+                )
+                self.pre_processed_files += [(file, track_df)]
 
     def process_nd2(self) -> None:
         """Processes nd2 files"""
@@ -254,19 +258,6 @@ class FileReader:
             self.pre_processed_files += [(file, track_df)]
 
 
-class RawDataFrame:
-    """DataFrame pre-processing"""
-
-    def __init__(self, df: pd.DataFrame) -> None:
-        """Initialize the new dataframe
-
-        Args:
-            df (pd.DataFrame): trajectory data table
-        """
-        average_df = df.groupby("Trajectory")["Brightness"].mean()
-        self.data_df = df.join(average_df, on="Trajectory", rsuffix="-Average")
-
-
 class Movie(RawDataFrame):
     """Individual movie object class
 
@@ -284,7 +275,7 @@ class Movie(RawDataFrame):
             filepath (string): full file location
             trajectory_df (pd.DataFrame): initial trajectory data
         """
-        RawDataFrame.__init__(self, trajectory_df)
+        self.data_df = trajectory_df
         self.metadata = metadata
         self.filepath = os.path.normpath(filepath)
         self._name = {"FileName": self.filepath.split(os.sep)[-1][:-4]}
@@ -297,7 +288,7 @@ class Movie(RawDataFrame):
             self._name["FileName"], "_", "ND Filter", ["nd"], failure="08"
         )
         self._protein = fo.Find.identifiers(
-            self._name["FileName"], "_", "Protein", ["grp", "pdk", "pkc", "akt"]
+            self._name["FileName"], "_", "Protein", ["grp", "pdk", "pkc", "akt", "px"]
         )
         self.export_dict = {}
         for key, val in self.__dict__.items():
@@ -322,6 +313,15 @@ class Movie(RawDataFrame):
             new_df (pd.DataFrame): updated (thresholded) trajectory data
         """
         setattr(self, "data_df", new_df)
+
+    def save_df(self):
+        """Saves trajectory dataframe for machine learning cases"""
+
+        self.data_df.to_excel(
+            f"{self.filepath[:-4]}_preprocessed_data.xlsx",
+            index=False,
+            sheet_name="Keepers",
+        )
 
 
 class Export:

@@ -37,7 +37,7 @@ class Progress:
             begin = time.time()
             function_result = func(*args, **kwargs)
             end = time.time()
-            print(f"{func.__name__} Elapsed time : {(end-begin)}")
+            print(" " * 9, f"{func.__name__} Elapsed time : {(end-begin):.2f}")
             return function_result
 
         return wrapper

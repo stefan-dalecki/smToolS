@@ -29,6 +29,7 @@ def main(file: tuple) -> pd.DataFrame:
         movie_path, trajectories = file
         movie = io.Movie(metadata, movie_path, trajectories)
         movie.update_trajectory_df(new_df=fo.Calc.trio(metadata, movie.data_df))
+        movie.save_df()
 
         print(
             f"   Beginning --- {script.cutoff_method} --- Method Cutoffs",
