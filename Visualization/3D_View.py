@@ -1,5 +1,6 @@
 import os
 import sys
+import operator
 from functools import reduce
 import pandas as pd
 import numpy as np
@@ -54,9 +55,9 @@ class Reader:
         try:
             file_name = filedialog.askopenfilename()
             if file_name.endswith(".csv"):
-                self.df = pd.read_csv(file_name)
+                self.df = pd.read_csv(file_name, index_col=[0])
             elif file_name.endswith(".xlsx"):
-                self.df = pd.read_excel(file_name)
+                self.df = pd.read_excel(file_name, index_col=[0])
             else:
                 raise TypeError
         except TypeError:
@@ -64,9 +65,10 @@ class Reader:
 
 
 class Analyze:
-    def __init__(self, metadata: object, df: pd.DataFrame):
+    def __init__(self, metadata: object, df: pd.DataFrame, brightness_col: str = "m2"):
         self._metadata = metadata
         self.df = df
+        self._brightness_col = brightness_col
 
     def trio_lyze(self):
         """Calculate average brightness, length, and diffusivity for each trajectory
@@ -78,41 +80,46 @@ class Analyze:
             pd.DataFrame: updated trajectory data with trio
         """
         self.df["Average_Brightness"] = self.df.groupby("Trajectory")[
-            "Brightness"
+            self._brightness_col
         ].transform(np.mean)
         self.df["Length (frames)"] = self.df.groupby("Trajectory")[
             "Trajectory"
         ].transform("size")
-        data = self.df.groupby("Trajectory")[["x", "y"]].apply(fo.Calc.one_step_MSD)
+        data = self.df.groupby("Trajectory")[["x", "y"]].apply(
+            fo.Calc.one_step_MSD, self._metadata
+        )
         data = pd.DataFrame(data.to_list(), columns=["SDs", "MSD"])
         data.index += 1
         data.reset_index(inplace=True)
         data = data.rename(columns={"index": "Trajectory"})
         self.df["SDs"] = reduce(operator.add, data["SDs"])
         self.df = self.df.merge(data[["Trajectory", "MSD"]])
-        self.df = self.df.assign(Group="")
         return self
 
     def identify(
         self,
         *,
-        brightness: dict = {"dim": 3.1, "bright": 3.8},
-        min_length: dict = {"short": 10},
-        diffusion: dict = {"slow": 0.3, "fast": 3.5},
+        criteria: dict = {
+            "dim": ("Average_Brightness", "<", 3.1),
+            "bright": ("Average_Brightness", ">", 3.8),
+            "short": ("Length (frames)", "<", 10),
+            "slow": ("MSD", "<", 0.3),
+            "fast": ("MSD", ">", 3.5),
+        },
     ):
-        assert min_length["short"] < np.max(self.df["Length (frames)"])
-        for row in self.df.iterrows:
-            if row["Average_Brightness"] < brightness["dim"]:
-                row["ID"] += "dim + "
-            if row["Average_Brightness"] > brightness["bright"]:
-                row["ID"] += "bright + "
-            if row["Length (frames)"] < min_length["short"]:
-                row["ID"] += "short + "
-            if row["MSD"] < diffusion["slow"]:
-                row["ID"] += "slow + "
-            if row["MSD"] > diffusion["fast"]:
-                row["ID"] += "fast + "
-        self.df["ID"] = self.df["ID"].removesuffix(" + ").fillna("valid trajectory")
+        ops = {
+            "<": operator.lt,
+            "=<": operator.le,
+            ">": operator.gt,
+            "=>": operator.ge,
+            "=": operator.eq,
+        }
+        for key, val in criteria.items():
+            col, op, num = val[0], val[1], val[2]
+            self.df.loc[ops[op](self.df[col], num), key] = key
+        self.df["ID"] = self.df.iloc[:, -5:].sum(axis=1)
+        print(self.df.iloc[:, -5:].sum(axis=1))
+        print(self.df.tail())
         return self
 
 
@@ -124,7 +131,9 @@ class Plot:
         x: str = "Average_Brightness",
         y: str = "Length (frames)",
         z: str = "MSD",
+        id_col="ID",
     ):
+        # assert {"Trajectory", "ID"} in set(df.columns)
         self.df = df[["Trajectory", x, y, z, "ID"]]
         self._x = df[x]
         self._y = df[y]
@@ -132,20 +141,21 @@ class Plot:
         self._x_label = x
         self._y_label = y
         self._z_label = y
+        self._point_labels = df[id_col]
         self._title = "Trajectories"
 
-    def figure(self):
+    def display(self):
         fig = plt.figure()
         ax = fig.add_subplot(projection="3d")
-        ax.set_x_label(self._x_label, labelpad=10)
-        ax.set_y_label(self._y_label, labelpad=10)
-        ax.set_z_label(self._z_label, labelpad=10)
+        ax.set_xlabel(self._x_label, labelpad=10)
+        ax.set_ylabel(self._y_label, labelpad=10)
+        ax.set_zlabel(self._z_label, labelpad=10)
         ax.set_title(self._title)
         sc = ax.scatter3D(
             self._x,
             self._y,
             self._z,
-            c=self.df["ID"],
+            c=self._point_labels,
             cmap="Dark2",
         )
         ax.view_init(30, 60)
@@ -153,7 +163,9 @@ class Plot:
         plt.show()
 
 
-meta = Metadata()
-file = Reader().single_file()
-data = Analyze(meta, file.df)
-figure = Plot(data.df)
+if __name__ == "__main__":
+    meta = Metadata()
+    file = Reader()
+    file.single_file()
+    data = Analyze(meta, file.df)
+    data.trio_lyze().identify()
