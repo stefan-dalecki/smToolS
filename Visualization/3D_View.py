@@ -1,4 +1,5 @@
 import os
+import sys
 from functools import reduce
 import pandas as pd
 import numpy as np
@@ -32,18 +33,34 @@ class Metadata:
 
 class Reader:
     def __init__(self):
+        self.df = None
         root = Tk()
         root.withdraw()
-        self._rootdir = filedialog.askdirectory()
-        self._combined_df = None
-        self._single_df = None
 
     def combine_files(self):
-        filenames = glob(self._rootdir + "/*.csv")
-        self._combined_df = pd.concat(map(pd.read_csv, filenames))
+        while True:
+            rootdir = filedialog.askdirectory()
+            filenames = glob(rootdir + "/*.csv")
+            if filenames:
+                self.df = pd.concat(map(pd.read_csv, filenames))
+                break
+            else:
+                print("no csv files found in selected")
+                exit = input("Continue? : (y/n)")
+                if exit == "n":
+                    sys.exit()
 
-    def single_file(self, filename):
-        self._single_df = pd.read_csv(os.path.join(self._rootdir, filename))
+    def single_file(self):
+        try:
+            file_name = filedialog.askopenfilename()
+            if file_name.endswith(".csv"):
+                self.df = pd.read_csv(file_name)
+            elif file_name.endswith(".xlsx"):
+                self.df = pd.read_excel(file_name)
+            else:
+                raise TypeError
+        except TypeError:
+            print(f"{os.path.splitext(file_name)[1]} --- File type not supported")
 
 
 class Analyze:
@@ -137,6 +154,6 @@ class Plot:
 
 
 meta = Metadata()
-file = Reader()
-data = Analyze(meta, file)
+file = Reader().single_file()
+data = Analyze(meta, file.df)
 figure = Plot(data.df)
