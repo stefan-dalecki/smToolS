@@ -117,9 +117,8 @@ class Analyze:
         for key, val in criteria.items():
             col, op, num = val[0], val[1], val[2]
             self.df.loc[ops[op](self.df[col], num), key] = key
+        self.df = self.df.fillna("")
         self.df["ID"] = self.df.iloc[:, -5:].sum(axis=1)
-        print(self.df.iloc[:, -5:].sum(axis=1))
-        print(self.df.tail())
         return self
 
 
@@ -135,13 +134,10 @@ class Plot:
     ):
         # assert {"Trajectory", "ID"} in set(df.columns)
         self.df = df[["Trajectory", x, y, z, "ID"]]
-        self._x = df[x]
-        self._y = df[y]
-        self._z = df[z]
         self._x_label = x
         self._y_label = y
-        self._z_label = y
-        self._point_labels = df[id_col]
+        self._z_label = z
+        self._point_labels = id_col
         self._title = "Trajectories"
 
     def display(self):
@@ -151,15 +147,17 @@ class Plot:
         ax.set_ylabel(self._y_label, labelpad=10)
         ax.set_zlabel(self._z_label, labelpad=10)
         ax.set_title(self._title)
-        sc = ax.scatter3D(
-            self._x,
-            self._y,
-            self._z,
-            c=self._point_labels,
-            cmap="Dark2",
-        )
+        groups = self.df.groupby(self.df[self._point_labels])
+        for name, group in groups:
+            ax.scatter3D(
+                group[self._x_label],
+                group[self._y_label],
+                group[self._z_label],
+                label=f"{group[self._point_labels].unique()[0]} : {len(group['Trajectory'].unique())}",
+            )
         ax.view_init(30, 60)
-        plt.legend(*sc.legend_elements(), title="Group ID")
+        plt.legend(title="IDs", bbox_to_anchor=(2, 0.5), loc="right")
+        # plt.legend(*sc.legend_elements(), title="Group ID")
         plt.show()
 
 
@@ -169,3 +167,5 @@ if __name__ == "__main__":
     file.single_file()
     data = Analyze(meta, file.df)
     data.trio_lyze().identify()
+    figure = Plot(data.df)
+    figure.display()
