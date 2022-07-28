@@ -100,11 +100,11 @@ class Analyze:
         self,
         *,
         criteria: dict = {
-            "dim": ("Average_Brightness", "<", 3.1),
-            "bright": ("Average_Brightness", ">", 3.8),
-            "short": ("Length (frames)", "<", 10),
-            "slow": ("MSD", "<", 0.3),
-            "fast": ("MSD", ">", 3.5),
+            "dim ": ("Average_Brightness", "<", 3.1),
+            "bright ": ("Average_Brightness", ">", 3.8),
+            "short ": ("Length (frames)", "<", 10),
+            "slow ": ("MSD", "<", 0.3),
+            "fast ": ("MSD", ">", 3.5),
         },
     ):
         ops = {
