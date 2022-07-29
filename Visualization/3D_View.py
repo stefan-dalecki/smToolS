@@ -98,13 +98,15 @@ class Analyze:
 
     def identify(
         self,
+        sep: str = "\u00B7",
+        keepers: str = "Valid",
         *,
         criteria: dict = {
-            "dim ": ("Average_Brightness", "<", 3.1),
-            "bright ": ("Average_Brightness", ">", 3.8),
-            "short ": ("Length (frames)", "<", 10),
-            "slow ": ("MSD", "<", 0.3),
-            "fast ": ("MSD", ">", 3.5),
+            "dim": ("Average_Brightness", "<", 3.1),
+            "bright": ("Average_Brightness", ">", 3.8),
+            "short": ("Length (frames)", "<", 10),
+            "slow": ("MSD", "<", 0.3),
+            "fast": ("MSD", ">", 3.5),
         },
     ):
         ops = {
@@ -116,9 +118,11 @@ class Analyze:
         }
         for key, val in criteria.items():
             col, op, num = val[0], val[1], val[2]
-            self.df.loc[ops[op](self.df[col], num), key] = key
+            self.df.loc[ops[op](self.df[col], num), key] = f"{key} {sep} "
         self.df = self.df.fillna("")
         self.df["ID"] = self.df.iloc[:, -5:].sum(axis=1)
+        self.df["ID"] = self.df["ID"].str.rstrip(f" {sep} ")
+        self.df["ID"].loc[self.df["ID"] == ""] = keepers
         return self
 
 
@@ -132,7 +136,7 @@ class Plot:
         z: str = "MSD",
         id_col="ID",
     ):
-        # assert {"Trajectory", "ID"} in set(df.columns)
+        assert {"Trajectory", x, y, z, id_col} and set(df.columns)
         self.df = df[["Trajectory", x, y, z, "ID"]]
         self._x_label = x
         self._y_label = y
@@ -141,7 +145,7 @@ class Plot:
         self._title = "Trajectories"
 
     def display(self):
-        fig = plt.figure()
+        fig = plt.figure(figsize=(10, 5))
         ax = fig.add_subplot(projection="3d")
         ax.set_xlabel(self._x_label, labelpad=10)
         ax.set_ylabel(self._y_label, labelpad=10)
@@ -156,8 +160,7 @@ class Plot:
                 label=f"{group[self._point_labels].unique()[0]} : {len(group['Trajectory'].unique())}",
             )
         ax.view_init(30, 60)
-        plt.legend(title="IDs", bbox_to_anchor=(2, 0.5), loc="right")
-        # plt.legend(*sc.legend_elements(), title="Group ID")
+        plt.legend(title="IDs", bbox_to_anchor=(1.75, 0.5), loc="right")
         plt.show()
 
 
