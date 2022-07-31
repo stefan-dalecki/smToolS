@@ -4,7 +4,7 @@ import os
 import copy
 import warnings
 from tkinter import filedialog
-from tkinter import *
+from tkinter import Tk
 import numpy as np
 import pandas as pd
 import formulas as fo

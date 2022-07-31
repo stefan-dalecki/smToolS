@@ -47,10 +47,10 @@ def main(file: tuple) -> pd.DataFrame:
             movie.update_trajectory_df(new_df=cluster.cutoff_df)
 
         else:
-            minimum_length = cut.Length(metadata, movie.data_df, method="minimum")
-            movie.update_trajectory_df(new_df=minimum_length.cutoff_df)
             brightness = cut.Brightness(metadata, movie.data_df, script.cutoff_method)
             movie.update_trajectory_df(new_df=brightness.cutoff_df)
+            minimum_length = cut.Length(metadata, movie.data_df, method="minimum")
+            movie.update_trajectory_df(new_df=minimum_length.cutoff_df)
 
         diffusion = cut.Diffusion(metadata, movie.data_df)
         movie.update_trajectory_df(new_df=diffusion.cutoff_df)

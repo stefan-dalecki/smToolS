@@ -222,7 +222,7 @@ class RayD(KineticBuilder):
 
     def dataformat(self) -> None:
         """Bin data for Rayleigh Distribution model fitting"""
-        sep = 100
+        sep = 500
         list_max = np.max(self._datalist)
         bins = np.linspace(0, list_max + (list_max / sep), sep)
         df = pd.DataFrame(self._datalist, columns=["values"])
@@ -232,4 +232,5 @@ class RayD(KineticBuilder):
         )
         bin_data.index = bins[:-1]
         bin_data = bin_data.reset_index(drop=False)
+        print(bin_data.describe())
         self.kinetic.table = bin_data
