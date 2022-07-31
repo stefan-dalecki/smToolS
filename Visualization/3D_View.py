@@ -5,7 +5,7 @@ from functools import reduce
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from tkinter import *
+from tkinter import Tk
 from tkinter import filedialog
 from glob import glob
 import operator
