@@ -30,16 +30,17 @@ class BrightnessHistogram:
     def plot(self) -> None:
         """Plot brightness data"""
         fig, axs = plt.subplots(tight_layout=True, figsize=(12, 5))
+        sep = 10**(int(f"{self._bins:.3e}".split("+")[-1])-2)
         N, bins, patches = axs.hist(
             self._data,
-            bins=[i * 0.1 + 0.1 for i in range(self._bins)],
+            bins=[i * sep + sep for i in range(self._bins)],
             edgecolor="black",
         )
         fracs = N / N.max()
         norm = colors.Normalize(fracs.min(), fracs.max())
         axs.set_xlabel(self._x_label)
-        axs.xaxis.set_major_locator(MultipleLocator(0.5))
-        axs.xaxis.set_minor_locator(MultipleLocator(0.1))
+        axs.xaxis.set_major_locator(MultipleLocator(sep*5))
+        axs.xaxis.set_minor_locator(MultipleLocator(sep))
         axs.set_xlim(0, 7)
         axs.set_ylabel(self._y_label)
         axs.set_title(self._title)
