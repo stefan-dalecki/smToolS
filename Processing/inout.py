@@ -279,9 +279,7 @@ class Movie:
         self.metadata = metadata
         self.filepath = os.path.normpath(filepath)
         self._name = {"FileName": self.filepath.split(os.sep)[-1][:-4]}
-        self._date = fo.Find.identifiers(
-            self.filepath, os.sep, "Date Acquired", ["ymd"]
-        )
+        self._date = fo.Find.date(self.filepath)
         self._gasket = fo.Find.identifiers(self.filepath, os.sep, "Gasket", ["gas"])
         self._replicate = {"Replicate": self._name["FileName"][-2:]}
         self._ND = fo.Find.identifiers(

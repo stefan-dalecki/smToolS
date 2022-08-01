@@ -195,6 +195,23 @@ class Find:
     """Find subset of larger group"""
 
     @staticmethod
+    def date(full_str: str):
+        import re
+        from datetime import datetime
+
+        output = {}
+        match_str = re.search(r"\d{4}_\d{2}_\d{2}", full_str)
+        try:
+            res = datetime.strptime(match_str.group(), "%Y_%m_%d").date()
+
+        except ValueError:
+            from dateutil import parser
+
+            res = parser.parse(full_str, fuzzy=True)
+        output["date"] = res
+        return output
+
+    @staticmethod
     def identifiers(
         full_string: str,
         separator: str,
