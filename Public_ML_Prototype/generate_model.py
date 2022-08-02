@@ -11,6 +11,8 @@ from tensorflow.keras import layers
 
 
 class File:
+    """Read in the data file"""
+
     def __init__(self) -> None:
         root = Tk()
         root.withdraw()
@@ -20,6 +22,7 @@ class File:
         self.data = None
 
     def read_file(self):
+        """Reads in file using method based on file type"""
         print(f"Reading : {self._file_path}")
         if self._extension == ".csv":
             self._df = pd.read_csv(self._file_path)
@@ -31,6 +34,13 @@ class File:
     def identify_parameters(
         self, *, parameters: list = ["Average_Brightness", "Length (frames)", "MSD"]
     ):
+        """Selects parameters for analysis
+
+        Args:
+            parameters (list, optional): column names to grab for analysis.
+                Defaults to ["Average_Brightness", "Length (frames)", "MSD"].
+
+        """
         assert set(parameters) & set(self._df.columns)
         self.data = self._df[["Trajectory", *parameters]]
         self.data.drop_duplicates(inplace=True)
@@ -39,13 +49,21 @@ class File:
 
 
 class Digestion:
-    def __init__(self, df):
+    """Begins data formatting"""
+
+    def __init__(self, df: pd.DataFrame) -> None:
+        """Initialize digestion object
+
+        Args:
+            df (pd.DataFrame): trajectory parameter data
+        """
         self._df = df
         self.array = None
         self.shuffled_inputs = None
         self.shuffled_outputs = None
 
-    def __call__(self):
+    def __call__(self) -> None:
+        """Call all functions to format data"""
         df_with_keepers = self.keep_these()
         parameter_values = df_with_keepers.iloc[:, 1:-1]
         normalized_values = self.normalize(parameter_values)
@@ -66,6 +84,16 @@ class Digestion:
         min_length: int = 10,
         diffusion: tuple = (0.3, 3.5),
     ) -> pd.DataFrame:
+        """Establishes ground truths
+
+        Args:
+            brightness (tuple, optional): min and max brightness values. Defaults to (3.1, 3.8).
+            min_length (int, optional): minimum length cutoff. Defaults to 10.
+            diffusion (tuple, optional): min and max diffusion values. Defaults to (0.3, 3.5).
+
+        Returns:
+            pd.DataFrame: adds binary value to whether a row represents a trajectory
+        """
         assert min_length < np.max(self._df["Length (frames)"])
         keepers = self._df.loc[
             (
@@ -77,7 +105,15 @@ class Digestion:
         return pd.merge(self._df, keepers, how="left").fillna(0)
 
     @staticmethod
-    def normalize(df) -> pd.DataFrame:
+    def normalize(df: pd.DataFrame) -> pd.DataFrame:
+        """Normalized column values
+
+        Args:
+            df (pd.DataFrame): dataframe with float values in columns
+
+        Returns:
+            pd.DataFrame: dataframe with normalized floats
+        """
         for col in df:
             mean = np.mean(df[col])
             std = np.std(df[col])
@@ -86,7 +122,17 @@ class Digestion:
         return df
 
     @staticmethod
-    def shuffle_it(array, inputs, outputs):
+    def shuffle_it(array: np.array, inputs: np.array, outputs: np.array) -> tuple:
+        """Shuffles data for random selection of train/test data
+
+        Args:
+            array (np.array): entire array of data
+            inputs (np.array): input floats
+            outputs (np.array): output binary truths
+
+        Returns:
+            tuple: the now shuffled inputs and outputs
+        """
         indeces_permutation = np.random.permutation(len(array))
         shuffled_inputs = inputs[indeces_permutation]
         shuffled_outputs = outputs[indeces_permutation]
@@ -94,14 +140,29 @@ class Digestion:
 
 
 class Learning:
-    def __init__(self, array, inputs, outputs) -> None:
+    """Creates object for internal pipeline analysis"""
+
+    def __init__(self, array: np.array, inputs: np.array, outputs: np.array) -> None:
+        """Initialize learning pipeline object
+
+        Args:
+            array (np.array): entire data array
+            inputs (np.array): normalized and shuffled input floats
+            outputs (np.array): binary output truths
+        """
         self._array = array
         self._inputs = inputs
         self._outputs = outputs
+        self.model = None
         self._performance_metrics = None
 
     @staticmethod
     def pipeline_model():
+        """Shortcut for generating model
+
+        Returns:
+            tensorflow model: compiled keras model with layers
+        """
         model = keras.Sequential(
             [
                 layers.Dense(64, activation="relu"),
@@ -117,6 +178,11 @@ class Learning:
         return model
 
     def prototype_model(self, *, num_epochs: int = 50) -> None:
+        """Run an initial setup on the model to judge success and detect overfitting
+
+        Args:
+            num_epochs (int, optional): how many times the fitting should run. Defaults to 50.
+        """
         num_validation_samples = int(0.3 * len(self._array))
         train_inputs = self._inputs[:num_validation_samples]
         train_targets = self._outputs[:num_validation_samples]
@@ -134,7 +200,13 @@ class Learning:
         history_dict = history.history
         Display.prototype_progress(history_dict)
 
-    def k_fold_validation(self, k: int = 4, *, num_epochs: int = 50):
+    def k_fold_validation(self, k: int = 4, *, num_epochs: int = 50) -> None:
+        """Selects test and validation data in alternating series
+
+        Args:
+            k (int, optional): number of segments to create. Defaults to 4.
+            num_epochs (int, optional): how many times the fitting should run. Defaults to 50.
+        """
         indeces_permutation = np.random.permutation(len(self._array))
         shuffled_inputs = self._inputs[indeces_permutation]
         shuffled_targets = self._outputs[indeces_permutation]
@@ -179,7 +251,12 @@ class Learning:
         ]
         Display.k_fold("Accuracy", score_mean)
 
-    def finalize_model(self, *, num_epochs: int):
+    def finalize_model(self, *, num_epochs: int) -> None:
+        """Based on prototyping and k_fold, generate the final model
+
+        Args:
+            num_epochs (int): select based on prototyping and k_fold analyses
+        """
         indeces_permutation = np.random.permutation(len(self._array))
         shuffled_inputs = self._inputs[indeces_permutation]
         shuffled_targets = self._outputs[indeces_permutation]
@@ -201,8 +278,15 @@ class Learning:
 
 
 class Display:
+    """Container class for matplotlib display functions"""
+
     @staticmethod
-    def prototype_progress(history_dict: dict):
+    def prototype_progress(history_dict: dict) -> None:
+        """Display performance of the prototype model
+
+        Args:
+            history_dict (dict): history.history object from model.fit
+        """
         loss_values = history_dict["loss"]
         epochs = range(1, len(loss_values) + 1)
         val_loss_values = history_dict["val_loss"]
@@ -225,7 +309,13 @@ class Display:
         plt.show()
 
     @staticmethod
-    def k_fold(metric: str, metric_scores: list[float]):
+    def k_fold(metric: str, metric_scores: list[float]) -> None:
+        """Display performance of k_fold analysis
+
+        Args:
+            metric (str): the metric to display
+            metric_scores (list[float]): corresponding metric scores
+        """
         plt.plot(range(1, len(metric_scores) + 1), metric_scores)
         plt.xlabel("Epochs")
         plt.ylabel(f"Average {metric}")
@@ -234,12 +324,20 @@ class Display:
 
 
 class Export:
-    def __init__(self):
+    """for saving and exporting model"""
+
+    def __init__(self) -> None:
+        """Initialize the export object, establish file name / location"""
         file_name = input("Name model output file : ")
         self._save_file = os.path.join(os.getcwd(), file_name)
         self()
 
-    def __call__(self, model):
+    def __call__(self, model) -> None:
+        """Export the generated model
+
+        Args:
+            model (tensorflow model): final model from Learning.finalize_model()
+        """
         model.save(self._save_file)
 
 
