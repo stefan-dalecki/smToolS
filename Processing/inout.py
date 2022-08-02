@@ -109,7 +109,6 @@ class Script:
                     input("High cutoff : ")
                 )
                 self.cutoff_method = {"semi_auto": (low_cut, high_cut)}
-            # self.boolprint = fo.Form.inputbool("Print progress?")
             self.booldisplay = fo.Form.inputbool("Display figures?")
         self.boolsave = fo.Form.inputbool("Save figures?")
 
@@ -279,7 +278,7 @@ class Movie:
         self.metadata = metadata
         self.filepath = os.path.normpath(filepath)
         self._name = {"FileName": self.filepath.split(os.sep)[-1][:-4]}
-        self._date = fo.Find.date(self.filepath)
+        self._date = fo.Find.date(filepath)
         self._gasket = fo.Find.identifiers(self.filepath, os.sep, "Gasket", ["gas"])
         self._replicate = {"Replicate": self._name["FileName"][-2:]}
         self._ND = fo.Find.identifiers(
