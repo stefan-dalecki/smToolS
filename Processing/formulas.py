@@ -1,5 +1,7 @@
 """Various function shortcuts"""
 
+import re
+from datetime import datetime
 from functools import reduce
 from collections import defaultdict
 import operator
@@ -195,20 +197,30 @@ class Find:
     """Find subset of larger group"""
 
     @staticmethod
-    def date(full_str: str):
-        import re
-        from datetime import datetime
+    def date(
+        full_str: str,
+        *,
+        failure: str = "no date found",
+        date_format: tuple[str, str] = (r"\d{4}_\d{2}_\d{2}", "%Y-%m-%d"),
+    ) -> dict:
+        """Find the date from a string (i.e. file path)
 
+        Args:
+            full_str (str): full string to search
+            failure (str, optional): what do return when no date is found.
+                Defaults to "no date found".
+            date_format (tuple[str, str], optional): the date format for searching.
+                Defaults to (r"\d{4}_\d{2}_\d{2}", "%Y-%m-%d").
+
+        Returns:
+            dict: _description_
+        """
         output = {}
-        match_str = re.search(r"\d{4}_\d{2}_\d{2}", full_str)
-        try:
-            res = datetime.strptime(match_str.group(), "%Y_%m_%d").date()
-
-        except ValueError:
-            from dateutil import parser
-
-            res = parser.parse(full_str, fuzzy=True)
-        output["date"] = res
+        match_str = re.search(date_format[0], full_str)
+        if match_str:
+            output["date"] = datetime.strptime(match_str.group(), date_format[1]).date()
+        else:
+            output["date"] = failure
         return output
 
     @staticmethod
