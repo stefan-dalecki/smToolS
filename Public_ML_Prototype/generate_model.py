@@ -276,6 +276,20 @@ class Learning:
             validation_inputs, validation_targets, batch_size=512
         )
 
+    def predict_type(self, array: np.array, df: pd.DataFrame) -> pd.DataFrame:
+        """Take a data array, predict using model, append to dataframe
+
+        Args:
+            array (np.array): shuffled and normalized inputs
+            df (pd.DataFrame): data to append result as column
+
+        Returns:
+            pd.DataFrame: original data with ID predictions
+        """
+        predictions = self.model.predict(array)
+        df["Model Predictions"] = predictions
+        return df
+
 
 class Display:
     """Container class for matplotlib display functions"""
@@ -345,11 +359,19 @@ if __name__ == "__main__":
     pre_processed_info = File().read_file().identify_parameters()
     digested_data = Digestion(pre_processed_info.data)
     digested_data()
+
     ml_modeling = Learning(
         digested_data.array,
         digested_data.shuffled_inputs,
         digested_data.shuffled_outputs,
     )
+
     ml_modeling.prototype_model(num_epochs=200)
     new_epochs = int(input("Choose the number of epochs : "))
     ml_modeling.k_fold_validation(num_epochs=new_epochs)
+
+    test_info = File().read_file().identify_parameters()
+    digested_test_info = Digestion(test_info.data)
+    digested_test_info()
+
+    predictions = ml_modeling.predict_type(digested_test_info.shuffled_inputs)
