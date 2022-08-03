@@ -139,6 +139,19 @@ class Digestion:
         return shuffled_inputs, shuffled_outputs
 
 
+class TestCase:
+    def __init__(self, df: pd.DataFrame) -> None:
+        self.df = df
+        self.inputs = None
+
+    def __call__(
+        self, cols: list[str] = ["Average_Brightness", "Length (frames)", "MSD"]
+    ):
+        inputs = self.df[[*cols]]
+        normed = Digestion.normalize(inputs)
+        self.inputs = normed.to_numpy()
+
+
 class Learning:
     """Creates object for internal pipeline analysis"""
 
@@ -370,8 +383,7 @@ if __name__ == "__main__":
     new_epochs = int(input("Choose the number of epochs : "))
     ml_modeling.k_fold_validation(num_epochs=new_epochs)
 
-    test_info = File().read_file().identify_parameters()
-    digested_test_info = Digestion(test_info.data)
-    digested_test_info()
+    test_file = File().read_file().identify_parameters()
+    test_data = TestCase(test_file.data)
 
-    predictions = ml_modeling.predict_type(digested_test_info.shuffled_inputs)
+    predictions = ml_modeling.predict_type(test_data.inputs, test_data.df)
