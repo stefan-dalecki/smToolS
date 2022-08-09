@@ -3,8 +3,9 @@
 import os
 import copy
 import warnings
+from collections import defaultdict
 from tkinter import filedialog
-from tkinter import Tk
+import xml.etree.ElementTree as ET
 import numpy as np
 import pandas as pd
 import formulas as fo
@@ -24,12 +25,15 @@ class MetaData:
         """Initialize microscope parameters
 
         Args:
-            pixel_size (float, optional): pixel width. Defaults to 0.000024.
+            pixel_size (float, optional): pixel width in cm. Defaults to 0.000024.
             framestep_size (float, optional): time between frames. Defaults to 0.0217.
             frame_cutoff (int, optional): minimum trajectory length in frames. Defaults to 10.
         """
+        # These values must be changed depending on your microscope qualities
         self.pixel_size = pixel_size
         self.framestep_size = framestep_size
+        # frame_cutoff is dependent on biologic interest (i.e. are you interested
+        # in proteins that are associated for a short or long period of time?)
         self.frame_cutoff = frame_cutoff
 
     def modify(self, **kwargs: dict[str, float or int]) -> object:
@@ -38,6 +42,8 @@ class MetaData:
         Returns:
             object: modified metadata
         """
+        # Useful if you want to run different sub-routines within your program that
+        # change the frame_cutoff or other characteristic
         temporary_metadata = copy.deepcopy(self)
         for kwarg in kwargs:
             for key, val in kwarg.items():
@@ -52,6 +58,11 @@ class Script:
     Establish a root directory and save file name
 
     """
+
+    # Excel is viewed as redundant and are read in slowly, it is not supported.
+    # Any excel file can be converted to a csv with minimal difficulty.
+    # Microsoft gets enough support already. Anyways...
+    filetype_options = ["csv", "nd2", "hdf5", "xml"]
 
     def __init__(self) -> None:
         """
@@ -70,11 +81,9 @@ class Script:
             none
 
         """
-        self._filetype_options = ["csv", "nd2", "hdf5"]
         self.filetype = None
         self.savefile = None
         self.rootdir = None
-        self.parallel_process = False
         self.cutoff_method = None
         self.booldisplay = False
         self.boolsave = False
@@ -82,34 +91,31 @@ class Script:
 
     def establish_constants(self) -> None:
         """Update script parameters"""
-        self.filetype = fo.Form.userinput("filetype", self._filetype_options)
-        root = Tk()
-        root.withdraw()
+        self.filetype = fo.Form.userinput("filetype", Script.filetype_options)
         self.rootdir = filedialog.askdirectory()
         print(f"\nFile Directory chosen : {self.rootdir}")
         self.savefile = os.path.join(self.rootdir, input("\nName your output file: "))
-        if self.parallel_process:
-            self.cutoff_method = "auto"
-            self.booldisplay = False
-        else:
-            brightness_options = (
-                ["clustering"]
-                + [
-                    option
-                    for option in dir(cut.Brightness)
-                    if option.startswith("__") is False
-                ]
-                + ["none"]
+        # Brightness options are based on brightness cutoff function names, with 'none'
+        # as a way to bypass any brightness cutoffs. 'none' is necessary for xml files
+        # from trackmate that do not contain any brightness data.
+        brightness_options = (
+            ["clustering"]
+            + [
+                option
+                for option in dir(cut.Brightness)
+                if option.startswith("__") is False
+            ]
+            + ["none"]
+        )
+        self.cutoff_method = fo.Form.userinput(
+            "cutoff/brigthness thresholding method", brightness_options
+        )
+        if self.cutoff_method == "semi_auto":
+            low_cut, high_cut = float(input("Low cutoff : ")), float(
+                input("High cutoff : ")
             )
-            self.cutoff_method = fo.Form.userinput(
-                "cutoff/brigthness thresholding method", brightness_options
-            )
-            if self.cutoff_method == "semi_auto":
-                low_cut, high_cut = float(input("Low cutoff : ")), float(
-                    input("High cutoff : ")
-                )
-                self.cutoff_method = {"semi_auto": (low_cut, high_cut)}
-            self.booldisplay = fo.Form.inputbool("Display figures?")
+            self.cutoff_method = {"semi_auto": (low_cut, high_cut)}
+        self.booldisplay = fo.Form.inputbool("Display figures?")
         self.boolsave = fo.Form.inputbool("Save figures?")
 
     def generate_filelist(self) -> None:
@@ -173,20 +179,23 @@ class FileReader:
             filetype (str): filetype extension
             filelist (list): all file names to analyze
         """
-        self._filetype = filetype
+        self.filetype = filetype
         self._rawfiles = filelist
         self.pre_processed_files = []
-        reader_method = getattr(FileReader, f"process_{self._filetype}")
+        reader_method = getattr(FileReader, f"process_{self.filetype}")
         reader_method(self)
 
     def process_csv(self) -> None:
         """Processes csv files"""
         for file in self._rawfiles:
             track_df = pd.read_csv(file, index_col=[0])
+            # A quick check to see if the csv file contains trajectory data
+            # or if it contains other nonsense
             if {"x", "y"} <= set(track_df.columns):
+                # Some functions look for specifically named columns
                 track_df.rename(
                     columns={
-                        "paricle": "Trajectory",
+                        "particle": "Trajectory",
                         "frame": "Frame",
                         "m2": "Brightness",
                     },
@@ -201,6 +210,9 @@ class FileReader:
 
         warnings.filterwarnings("ignore", category=UserWarning)
         tp.quiet()
+        # This is a python specific method for particle tracking as opposed to
+        # a method within ImageJ. For this reason, these three parameters must be
+        # changed to satisfy your specific needs.
         DIAMETER = 9
         MOVEMENT = 10
         MEMORY = 1
@@ -251,10 +263,28 @@ class FileReader:
                         print("Trajectory Linking Complete")
                         self.pre_processed_files += [(file, track_df)]
 
-    def process_hdf5(self):
+    def process_hdf5(self) -> None:
+        """Read in an hdf5 file created by trackpy through an nd2"""
         for file in self._rawfiles:
             track_df = pd.concat(file)
             self.pre_processed_files += [(file, track_df)]
+
+    def process_xml(self) -> None:
+        """Read in an xml file generated by trackmate in ImageJ"""
+        for file in self._rawfiles:
+            root = ET.fromstring(open(file, encoding="utf-8").read())
+            # Find column names based on first entry
+            track_df = pd.DataFrame(columns=["Trajectory", *root[0][0].attrib.keys()])
+            for i, val in enumerate(root):
+                traj_dict = defaultdict(list)
+                for j in val:
+                    for k, v in j.attrib.items():
+                        traj_dict[k].append(v)
+                # Create and combine row based on dictionary of key value pairs
+                traj_df = pd.DataFrame.from_dict(traj_dict).assign(Trajectory=i + 1)
+                track_df = pd.concat([track_df, traj_df]).reset_index(drop=True)
+            track_df.rename(columns={"t": "Frame"}, inplace=True)
+            self.pre_processed_files += [file, track_df]
 
 
 class Movie:
@@ -289,6 +319,7 @@ class Movie:
         )
         self.export_dict = {}
         self.export_dict["filepath"] = {filepath}
+        # Only internal variables (self._) are used to build your output table
         for key, val in self.__dict__.items():
             if key.startswith("_"):
                 for att_key, att_val in val.items():
@@ -313,7 +344,7 @@ class Movie:
         setattr(self, "data_df", new_df)
 
     def save_df(self):
-        """Saves trajectory dataframe for machine learning cases"""
+        """Saves trajectory data post-cutoffs"""
 
         self.data_df.to_excel(
             f"{self.filepath[:-4]}_preprocessed_data.xlsx",
@@ -326,6 +357,9 @@ class Export:
     """Export class"""
 
     export_file_types = ["csv", "xlsx"]
+    # I recommend saving as an excel file for easier usage in excel
+    # Also, I organize my work so that my csv's contain raw data
+    # and my xlsx's contain results. But you do you.
 
     def __init__(self, script: object, df: pd.DataFrame) -> None:
         """Initialize export class object
