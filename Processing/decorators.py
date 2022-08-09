@@ -17,6 +17,10 @@ class Progress:
         """
 
         def wrapper(*args, **kwargs):
+            """Inner wrapper function
+
+            Returns:
+                any type of function result"""
             print("\nBeginning Movie Analysis...")
             begin = time.time()
             function_result = func(*args, **kwargs)
@@ -33,7 +37,18 @@ class Progress:
 
     @staticmethod
     def time_me(func: Callable):
+        """Calculates the time taken to complete function call
+
+        Args:
+            func (Callable): function to measure
+        """
+
         def wrapper(*args, **kwargs):
+            """Returns result of function
+
+            Returns:
+                any type of function return
+            """
             begin = time.time()
             function_result = func(*args, **kwargs)
             end = time.time()
@@ -60,7 +75,10 @@ class Progress:
             """
 
             def wrapper(*args, **kwargs):
-                """Inner wrapper function"""
+                """Inner wrapper function
+
+                Returns:
+                    any type of function result"""
                 print(f"{'   '*indent}Starting {action} {ending}")
                 function_result = func(*args, **kwargs)
                 print(f"{'   '*indent}Finished {action} {ending}", end="\n" * 2)

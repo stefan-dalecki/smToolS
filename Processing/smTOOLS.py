@@ -1,4 +1,5 @@
-"""Central module"""
+"""smToolS
+(s)ingle (m)olecule (Tool) by (S)tefan"""
 
 import traceback
 import sys
@@ -36,7 +37,7 @@ def main(file: tuple) -> pd.DataFrame:
             end="\n" * 2,
         )
 
-        if script.cutoff_method == "none":
+        if script.cutoff_method == "none" or file_info.filetype == "xml":
             minimum_length = cut.Length(metadata, movie.data_df, method="minimum")
             movie.update_trajectory_df(new_df=minimum_length.cutoff_df)
 
@@ -153,11 +154,8 @@ if __name__ == "__main__":
     metadata = io.MetaData()
     script.establish_constants()
     script.generate_filelist()
-    file_dictionary = io.FileReader(script.filetype, script.filelist)
-    if script.parallel_process:
-        dfs = io.Script.batching(main, file_dictionary.pre_processed_files)
-    else:
-        dfs = pd.concat(map(main, file_dictionary.pre_processed_files))
+    file_info = io.FileReader(script.filetype, script.filelist)
+    dfs = pd.concat(map(main, file_info.pre_processed_files))
     export = io.Export(script, dfs)
     export()
     count_down = 3

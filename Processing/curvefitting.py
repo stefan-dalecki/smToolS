@@ -1,4 +1,6 @@
-"""Fit kinetic data to models"""
+"""Fit kinetic data to models
+Once kinetic (kinetics.py) raw data is organized,
+K-off (BSL) and other features can be extracted"""
 
 import itertools
 import copy
@@ -40,6 +42,9 @@ class Model:
         """
         self.converted_popt = copy.deepcopy(self.popt)
         self.converted_pcov = copy.deepcopy(self.pcov)
+        # A one component models lack a population variable
+        # Multiple components follow the same coefficient format
+        # Pop_n, Pop_n+1..., Pop_m, Constant_n, Constant_n+1..., Constant_m
         if self.kinetic.name == "BSL":
             if self.components == 1:
                 self.converted_popt[0] = self.popt[0] * self.metadata.framestep_size
@@ -79,7 +84,7 @@ class Model:
         Returns:
             dict: export data for additional to central export data
         """
-
+        # Sometimes model fitting will fail (data cannot be described)
         assert np.nan not in self.popt, "Model Fitting Failed, no data for update"
         try:
             export_dict = {}
@@ -141,6 +146,8 @@ class Director:
         Returns:
             self: class object
         """
+        # For additional model-able components, class structure
+        # must contain these functions
         self._builder.generate_model()
         self._builder.set_equation()
         self._builder.set_guess()
@@ -218,23 +225,28 @@ class ExpDecay(ModelBuilder):
         """
         try:
             if isinstance(self._components, int):
+                # i.e. 1, 2, 3... component models
                 model_name = f"{num2words(self._components).capitalize()}Comp{self.__class__.__name__}"
                 self._equation = getattr(Equations, model_name)
                 NUM_LIMITS = len(signature(self._equation).parameters) - 1
+                # Because time and population cannot be negative, lower limit is '0'
                 self._limits = self._limits = (
                     [0.0 for i in range(NUM_LIMITS)],
                     [np.inf for i in range(NUM_LIMITS)],
                 )
 
             elif isinstance(self._components, str):
+                # i.e. Exponential and Linear decays
                 model_name = f"{self._components}Comp{self.__class__.__name__}"
                 self._equation = getattr(Equations, model_name)
                 NUM_LIMITS = len(signature(self._equation).parameters) - 1
                 self._limits = (
-                    [-np.inf for i in range(NUM_LIMITS)],
+                    [0 for i in range(NUM_LIMITS)],
                     [np.inf for i in range(NUM_LIMITS)],
                 )
             else:
+                # Error will only raise if invalid model type is chosen
+                # This is a good catching user-generated models
                 raise TypeError
             self.model.equation = self._equation
         except TypeError:
@@ -244,9 +256,11 @@ class ExpDecay(ModelBuilder):
         """Set model fitting origin point
         Guesses are based on previous data
         Biologic properties are good starting points for guesses"""
+        # estimates based on e^(-t/tau)
         tau_estimation = fo.Calc.e_estimation(self._df)
         if self._components == 1:
             self._guess = [tau_estimation]
+        # Guesses are generated to match number of equation dependent variables
         elif self._components > 1:
             major_population = (1 / self._components) * 1.5
             minor_population = (1 - major_population) / (self._components - 1)
@@ -365,7 +379,10 @@ class RayDiff(ModelBuilder):
 
 
 class Equations:
-    """Holder for all fitting equations"""
+    """Holder for all fitting equations
+    Additional equations can be added as long as they match the formatting
+    of the currently present equation. Focus on the order of population
+    and time related variables."""
 
     @staticmethod
     def OneCompExpDecay(t: float, tau: float) -> np.ndarray:
@@ -517,6 +534,7 @@ class FitFunction:
         try:
             x_data = df.iloc[:, 0].values.astype(float)
             y_data = df.iloc[:, 1].values.astype(float)
+            # Putting limits as None will cause errors
             if limits:
                 popt, pcov = curve_fit(equation, x_data, y_data, p0=p0, bounds=limits)
             else:
@@ -531,7 +549,7 @@ class FitFunction:
             return np.nan, np.nan, np.nan, np.nan
 
     @staticmethod
-    def linear(df: pd.DataFrame):
+    def linear(df: pd.DataFrame) -> tuple:
         """Linear Regression
 
         Args:

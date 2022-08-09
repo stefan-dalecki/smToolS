@@ -47,9 +47,7 @@ class Reader:
                 break
             else:
                 print("no csv files found in selected")
-                exit = input("Continue? : (y/n)")
-                if exit == "n":
-                    sys.exit()
+                sys.exit()
 
     def single_file(self):
         try:

@@ -101,8 +101,10 @@ class BSL(KineticBuilder):
         """Reformat the trajectory dataframe for model fitting"""
         numpertracklen = pd.DataFrame(columns=["Minimum Frames", "% Tracks"])
         tot_tracks = fo.Calc.trajectory_count(self._df)
-        step = 2
-        start = cutofflen = self.metadata.frame_cutoff - 2
+        step = 1
+        # The first frame is used as a guide for slowly reducing the remaining
+        # trajectories that meat the length criterai
+        start = cutofflen = self.metadata.frame_cutoff - step
         while True:
             cutofflen += step
             tracks = round(
@@ -118,6 +120,7 @@ class BSL(KineticBuilder):
                 {"Minimum Frames": [cutofflen - start], "% Tracks": [tracks]}
             )
             numpertracklen = pd.concat([numpertracklen, new_row])
+            # Stop when no tracks are remaining
             if tracks == 0:
                 break
         self.kinetic.table = numpertracklen
@@ -138,6 +141,7 @@ class MSD(KineticBuilder):
             metadata (class object): persistent metadata based on microscope qualities
             df (pd.DataFrame): trajectory data
         """
+        # Removes the first step in every single trajectory only for diffusion calculations
         for trajectory in df["Trajectory"].unique():
             t_rows = df[df["Trajectory"] == trajectory]
             df.drop(min(t_rows.index))
@@ -160,7 +164,7 @@ class MSD(KineticBuilder):
         df = self._df
         step_diffusions = (
             df.groupby("Trajectory")[["x", "y"]]
-            .apply(fo.Calc.all_steps, self.metadata)
+            .apply(fo.Calc.all_steps_no_min, self.metadata)
             .to_list()
         )
         result = defaultdict(list)
@@ -186,9 +190,10 @@ class MSD(KineticBuilder):
         x_data = df.iloc[:, 0].values.astype(float)
         y_data = df.iloc[:, 1].values.astype(float)
         try:
-            slope, intercept, r2, p, se = stats.linregress(x_data, y_data)
+            slope, intercept, r2, pe, se = stats.linregress(x_data, y_data)
         except ValueError:
-            slope, intercept, r2, pe, se = np.nan, np.nan, np.nan
+            slope, intercept, r2, pe, se = np.nan, np.nan, np.nan, np.nan, np.nan
+        # Convert data into um^2/sec
         export_dict = {"MSD (\u03BCm\u00b2/sec)": slope * 10**8, "MSD R\u00b2:": r2}
         return export_dict
 
@@ -224,6 +229,8 @@ class RayD(KineticBuilder):
         """Bin data for Rayleigh Distribution model fitting"""
         sep = 300
         list_max = np.max(self._datalist)
+        assert np.min(self._datalist) >= 0, "Diffusion cannot be negative"
+        # Separates data between '0' and max values
         bins = np.linspace(0, list_max + (list_max / sep), sep)
         df = pd.DataFrame(self._datalist, columns=["values"])
         bin_data = pd.DataFrame(

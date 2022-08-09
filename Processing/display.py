@@ -21,7 +21,9 @@ class BrightnessHistogram:
         y_label: str = "Frequency",
         title: str = "Binned Brightness",
     ) -> None:
+        assert min(data) >= 0, f"{min(data)} : Brightness value cannot be negative"
         self._data = data
+        # Bins are set based on a rounded version of the max value
         self._bins = ceil(max(data)) * 10
         self._x_label = x_label
         self._y_label = y_label
@@ -30,7 +32,8 @@ class BrightnessHistogram:
     def plot(self) -> None:
         """Plot brightness data"""
         fig, axs = plt.subplots(tight_layout=True, figsize=(12, 5))
-        sep = 10**(int(f"{self._bins:.3e}".split("+")[-1])-2)
+        # Tick marks are set relative to the scale on the x-axis
+        sep = 10 ** (int(f"{self._bins:.3e}".split("+")[-1]) - 2)
         N, bins, patches = axs.hist(
             self._data,
             bins=[i * sep + sep for i in range(self._bins)],
@@ -39,9 +42,10 @@ class BrightnessHistogram:
         fracs = N / N.max()
         norm = colors.Normalize(fracs.min(), fracs.max())
         axs.set_xlabel(self._x_label)
-        axs.xaxis.set_major_locator(MultipleLocator(sep*5))
+        axs.xaxis.set_major_locator(MultipleLocator(sep * 5))
         axs.xaxis.set_minor_locator(MultipleLocator(sep))
-        axs.set_xlim(0, 7)
+        # No negative brightness values should exist
+        axs.set_xlim(0, ceil(max(self._data)))
         axs.set_ylabel(self._y_label)
         axs.set_title(self._title)
         for thisfrac, thispatch in zip(fracs, patches):
@@ -71,6 +75,7 @@ class ThreeDScatter:
 
     def set_attributes(self) -> None:
         """set figure attributes"""
+        # First three columns must contain desired data
         self._x = self._df.iloc[:, 0]
         self._x_label = self._x.name
         self._y = self._df.iloc[:, 1]
@@ -124,35 +129,35 @@ class ThreeDScatter:
         plt.show(block=False)
 
 
-class MSDLine:
-    def __init__(self, kinetic: object, df: pd.DataFrame, line: object) -> None:
-        self._kinetic = kinetic
-        self._df = df
-        self._line = line
-        self._x = None
-        self._x_label = None
-        self._y = None
-        self._y_label = None
+# class MSDLine:
+#     def __init__(self, kinetic: object, df: pd.DataFrame, line: object) -> None:
+#         self._kinetic = kinetic
+#         self._df = df
+#         self._line = line
+#         self._x = None
+#         self._x_label = None
+#         self._y = None
+#         self._y_label = None
 
-    def set_attributes(self) -> None:
-        """set figure attributes"""
-        self._x = self._df.iloc[:, 0]
-        self._x_label = self._x.name
-        self._y = self._df.iloc[:, 1]
-        self._y_label = self._y.name
+#     def set_attributes(self) -> None:
+#         """set figure attributes"""
+#         self._x = self._df.iloc[:, 0]
+#         self._x_label = self._x.name
+#         self._y = self._df.iloc[:, 1]
+#         self._y_label = self._y.name
 
-    def plot(self):
-        x_data = self._x.values.astype(float)
-        y_data = self._y.values.astype(float)
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5), tight_layout=True)
-        fig.suptitle(f"{self._kinetic.name} ({self._kinetic.unit})")
-        fig.supxlabel(self._x_label)
-        fig.supylabe(self._y_label)
-        ax1.scatter(x_data, y_data, s=3, alpha=1, color="grey", label="Data")
-        ax1.set_title("Linear Regression")
-        ax1.plot(
-            x_data,
-        )
+#     def plot(self):
+#         x_data = self._x.values.astype(float)
+#         y_data = self._y.values.astype(float)
+#         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5), tight_layout=True)
+#         fig.suptitle(f"{self._kinetic.name} ({self._kinetic.unit})")
+#         fig.supxlabel(self._x_label)
+#         fig.supylabe(self._y_label)
+#         ax1.scatter(x_data, y_data, s=3, alpha=1, color="grey", label="Data")
+#         ax1.set_title("Linear Regression")
+#         ax1.plot(
+#             x_data,
+#         )
 
 
 class ScatteredLine:
@@ -169,7 +174,7 @@ class ScatteredLine:
         self._y_label = None
         self._main_title = None
 
-    def set_labels(self) -> None:
+    def set_labels(self):
         """Establish plot axis labels"""
         self._x_label = self.model.kinetic.x_label
         self._y_label = self.model.kinetic.y_label
@@ -199,6 +204,8 @@ class ScatteredLine:
         )
         ax1.set_title(self.model.model_name)
         ax1_label = ""
+        # Model components follow a standardized format that can be broken down
+        # by using the lines below
         if self.model.components > 1:
             ordinal = lambda n: "%d%s" % (
                 n,
@@ -237,7 +244,7 @@ class ScatteredLine:
                     + str(time_constant_covariances[i])
                     + f" {self.model.kinetic.unit}\n"
                 )
-
+        # There is no 'else' catch since the type of models is meant to be scallable
         elif self.model.components == 1:
             time_constant = "{0:.3f}".format(self.model.converted_popt[0])
             time_constant_covariance = np.format_float_scientific(

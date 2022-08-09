@@ -27,12 +27,12 @@ class Calc:
         )
         df["Length (frames)"] = df.groupby("Trajectory")["Trajectory"].transform("size")
         data = df.groupby("Trajectory")[["x", "y"]].apply(Calc.one_step_MSD, metadata)
-        data = pd.DataFrame(data.to_list(), columns=["SDs", "MSD"])
+        data = pd.DataFrame(data.to_list(), columns=["SDs", "MSD (\u03BCm\u00b2/sec)"])
         data.index += 1
         data.reset_index(inplace=True)
         data = data.rename(columns={"index": "Trajectory"})
         df["SDs"] = reduce(operator.add, data["SDs"])
-        df = df.merge(data[["Trajectory", "MSD"]])
+        df = df.merge(data[["Trajectory", "MSD (\u03BCm\u00b2/sec)"]])
         return df
 
     @staticmethod
@@ -125,6 +125,24 @@ class Calc:
         return all_steps
 
     @staticmethod
+    def all_steps_no_min(df: pd.DataFrame, metadata: object) -> defaultdict(list):
+        df = df.reset_index(drop=True)
+        x_col, y_col = df["x"], df["y"]
+        all_steps = defaultdict(list)
+        max_step_len = 8
+        for step_len in range(1, max_step_len + 1):
+            for step_num in range(0, len(df) - step_len - 1):
+                x1, y1 = x_col[step_num], y_col[step_num]
+                x2, y2 = x_col[step_num + step_len], y_col[step_num + step_len]
+                distance = (
+                    Calc.distance(x1, y1, x2, y2) ** 2
+                    * metadata.pixel_size**2
+                    / (4 * metadata.framestep_size)
+                )
+                all_steps[step_len].append(distance)
+        return all_steps
+
+    @staticmethod
     def e_estimation(df: pd.DataFrame) -> float:
         """Estimate decay time constant
 
@@ -152,6 +170,9 @@ class Calc:
         Returns:
             float: f-statistic
         """
+        # F-model tests are unsuccessful with models that contain a large number of
+        # measured values (i.e. a range of 100 x-values). They are successful when a
+        # model is fit to few data points (i.e. less than 20)
         assert degfre1 > degfre2, "Simpler model is after the complex model"
         f_stat = ((ss1 - ss2)(degfre1 - degfre2)) / (ss2 / degfre2)
         return f_stat
@@ -170,6 +191,8 @@ class Calc:
             float: microscope depth of field
         """
 
+        # Though not ever called, this equation can be used to calculate a constant in
+        # the luminescence function below
         theta = incidence * (180 / np.pi)
         depth_of_field = (lam / (4 * np.pi)) * (
             n1**2 * (np.sin(theta)) ** 2 - n2**2
@@ -215,6 +238,11 @@ class Find:
         Returns:
             dict: _description_
         """
+        # \d{4}_\d{2}_\d{2} is the same as saying 1234_12_12, four numbers followed by
+        # two numbers, followed by another two numbers. Month and day are not distinguished.
+        # %Y-%m-%d is the same as Year-Month-Day. This takes the number above as separates
+        # The first four numbers into the year, second two into the month, and last two
+        # into the day.
         output = {}
         match_str = re.search(date_format[0], full_str)
         if match_str:
@@ -247,7 +275,8 @@ class Find:
         Returns:
             dict: search result as dictionary
         """
-
+        # Files named as follows can easily be interpreted by this function
+        # Data\Stefan\2021\2021_11_02\gas1\67pM-GRP1_ND06_01
         output = {}
         separated_full_string = [i for i in full_string.lower().split(separator)]
         for search_name in value_search_names:

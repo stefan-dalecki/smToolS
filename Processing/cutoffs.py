@@ -1,5 +1,4 @@
 """Filter trajectory data"""
-###Future task: convert various methods to builder design
 
 from copy import deepcopy
 import numpy as np
@@ -49,11 +48,12 @@ class Clustering:
             .drop_duplicates()
             .reset_index(drop=True)
         )
+        # Features must be scaled for proper k-means clustering
         scaler = StandardScaler()
         self._scaled_features = scaler.fit_transform(self.cluster_data)
         return self
 
-    def estimate_clusters(self) -> None:
+    def estimate_clusters(self):
         self._kmeans_kwargs = {
             "init": "random",
             "n_init": 10,
@@ -77,7 +77,7 @@ class Clustering:
         print(f"Suggested Clusters : \n   {self.suggested_clusters}")
         return self
 
-    def display(self) -> None:
+    def display(self):
         while True:
             self._n_clusters = int(input("   Model how many clusters? : "))
             kmeans = KMeans(n_clusters=self._n_clusters, **self._kmeans_kwargs)
@@ -103,6 +103,7 @@ class Clustering:
             self.cluster_data["Cluster"] == self._cluster_of_interest
         ].index.values
         self.cutoff_df = self._df.loc[self._df["Trajectory"].isin(keep_trajectories)]
+        # A minimum trajectory length is necessary for bound lifetime modeling
         self.min_length = np.min(
             self.cutoff_df.groupby(["Trajectory"])["Trajectory"].size()
         )
@@ -133,6 +134,8 @@ class Brightness:
     @dec.Progress.start_finish(indent=2, action="Brightness", ending="Cutoffs")
     def __call__(self) -> None:
         """Calls chosen brightness thresholding method"""
+        # Since the semi_auto method creates a dictionary as opposed to string
+        # it requires special unpacking when called
         if "semi_auto" in self._method:
             func = getattr(
                 Brightness,
@@ -214,11 +217,13 @@ class Brightness:
                 .filter(lambda x: len(x) > self.metadata.frame_cutoff)
                 .reset_index(drop=True)
             )
-            if fo.Calc.trajectory_count(grp_df) > 150:
-                break
-            else:
+            # The minimum expectation for the number of trajectories can be changed
+            # based on the number necessary for latter calculations
+            if fo.Calc.trajectory_count(grp_df) < 150:
                 groups += 1
                 continue
+            else:
+                break
         self.cutoff_df = rm_df
 
 
@@ -259,14 +264,6 @@ class Length:
             .reset_index(drop=True)
         )
 
-    # def subtract(self) -> None:
-    #     """Remove -x- frames from the beginning of all trajectories"""
-    #     df = self._df
-    #     for trajectory in df["Trajectory"].unique():
-    #         t_rows = df[df["Trajectory"] == trajectory]
-    #         df.drop(t_rows.iloc[: self.metadata.frame_cutoff].index)
-    #     self.cutoff_df = df.reset_index(drop=True)
-
 
 class Diffusion:
     """Diffusion cutoffs"""
@@ -276,7 +273,7 @@ class Diffusion:
         metadata: object,
         df: pd.DataFrame,
         *,
-        low: float = 0.25,
+        low: float = 0.45,
         high: float = 3.5,
     ) -> None:
         """Initialize diffusion object
@@ -302,6 +299,8 @@ class Diffusion:
     def displacement(self) -> None:
         """Use mean square displacement to filter trajectories"""
         df = self._df
-        rm_outliers_df = df[df["MSD"].between(self._low, self._high)]
+        rm_outliers_df = df[
+            df["MSD (\u03BCm\u00b2/sec)"].between(self._low, self._high)
+        ]
         rm_df = rm_outliers_df.reset_index(drop=True)
         self.cutoff_df = rm_df
