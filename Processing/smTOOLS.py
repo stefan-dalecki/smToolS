@@ -14,6 +14,8 @@ import decorators as dec
 
 
 @dec.Progress.movie_timer
+# Timing movie analysis is not helpful if you are displaying figures
+# The time spent looking at figures is part of the analysis
 def main(file: tuple) -> pd.DataFrame:
     """Main processing pipeline
     Reads in movies and calculates desired metrics based on trajectory data
@@ -145,7 +147,6 @@ def main(file: tuple) -> pd.DataFrame:
         )
         sleep(3)
         sys.exit()
-
     return pd.DataFrame(movie.export_dict, index=[0])
 
 

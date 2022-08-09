@@ -318,8 +318,8 @@ class Movie:
             self._name["FileName"], "_", "Protein", ["grp", "pdk", "pkc", "akt", "px"]
         )
         self.export_dict = {}
-        self.export_dict["filepath"] = {filepath}
-        # Only internal variables (self._) are used to build your output table
+        self.export_dict["filepath"] = filepath
+        # Only internal variables (self._) are used to further build your output table
         for key, val in self.__dict__.items():
             if key.startswith("_"):
                 for att_key, att_val in val.items():
