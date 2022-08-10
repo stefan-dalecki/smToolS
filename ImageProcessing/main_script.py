@@ -32,6 +32,7 @@ def main(file: tuple) -> pd.DataFrame:
         movie_path, trajectories = file
         movie = io.Movie(metadata, movie_path, trajectories)
         movie.update_trajectory_df(new_df=fo.Calc.trio(metadata, movie.data_df))
+        if 
         movie.save_df()
 
         print(

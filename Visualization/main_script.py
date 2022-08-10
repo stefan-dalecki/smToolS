@@ -35,6 +35,8 @@ class Reader:
         self.df = None
 
     def combine_files(self):
+        """Read and combine multiple files"""
+        # This can only be done when files are already pre_processed by smToolS
         while True:
             rootdir = filedialog.askdirectory()
             filenames = glob(rootdir + "/*pre_processed.csv")
