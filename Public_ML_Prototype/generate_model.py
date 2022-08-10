@@ -1,8 +1,9 @@
 """Use pre-processed data to identify protein trajectories"""
 
 import os
+import sys
 from tkinter import filedialog
-from tkinter import Tk
+from glob import glob
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -14,62 +15,69 @@ class File:
     """Read in the data file"""
 
     def __init__(self) -> None:
-        root = Tk()
-        root.withdraw()
-        self._file_path = filedialog.askopenfilename()
-        self._extension = os.path.splitext(self._file_path)[1]
+        self._extension = ".csv"
         self._df = None
         self.data = None
 
+    def read_folder(self):
+        while True:
+            rootdir = filedialog.askdirectory()
+            filenames = glob(rootdir + "/*pre_processed.csv")
+            if filenames:
+                self._df = pd.concat(map(pd.read_csv, filenames))
+                break
+            else:
+                print("no csv files found in selected directory")
+                sys.exit()
+
     def read_file(self):
         """Reads in file using method based on file type"""
-        print(f"Reading : {self._file_path}")
-        if self._extension == ".csv":
-            self._df = pd.read_csv(self._file_path)
-        elif self._extension == ".xlsx":
-            self._df = pd.read_excel(self._file_path)
+        file_path = filedialog.askopenfilename()
+        print(f"Reading : {file_path}")
+        self._df = pd.read_csv(file_path)
         print("   Reading Complete")
         return self
 
-    def identify_parameters(
-        self, *, parameters: list = ["Average_Brightness", "Length (frames)", "MSD"]
-    ):
-        """Selects parameters for analysis
+    # def identify_parameters(
+    #     self, *, parameters: list = ["Average_Brightness", "Length (frames)", "MSD"]
+    # ):
+    #     """Selects parameters for analysis
 
-        Args:
-            parameters (list, optional): column names to grab for analysis.
-                Defaults to ["Average_Brightness", "Length (frames)", "MSD"].
+    #     Args:
+    #         parameters (list, optional): column names to grab for analysis.
+    #             Defaults to ["Average_Brightness", "Length (frames)", "MSD"].
 
-        """
-        assert set(parameters) & set(self._df.columns)
-        self.data = self._df[["Trajectory", *parameters]]
-        self.data.drop_duplicates(inplace=True)
-        self.data = self.data.sort_values(by="Trajectory").reset_index(drop=True)
-        return self
+    #     """
+    #     assert set(parameters) & set(self._df.columns)
+    #     self.data = self._df[["Trajectory", *parameters]]
+    #     self.data.drop_duplicates(inplace=True)
+    #     self.data = self.data.sort_values(by="Trajectory").reset_index(drop=True)
+    #     return self
 
 
 class Digestion:
     """Begins data formatting"""
 
-    def __init__(self, df: pd.DataFrame) -> None:
+    def __init__(self, df: pd.DataFrame, ID_col: str) -> None:
         """Initialize digestion object
 
         Args:
             df (pd.DataFrame): trajectory parameter data
         """
         self._df = df
+        self._ID_col = ID_col
         self.array = None
         self.shuffled_inputs = None
         self.shuffled_outputs = None
 
     def __call__(self) -> None:
         """Call all functions to format data"""
-        df_with_keepers = self.keep_these()
-        parameter_values = df_with_keepers.iloc[:, 1:-1]
+        # df_with_keepers = self.keep_these()
+        parameter_values = self._df.iloc[:, 1:-1]
         normalized_values = self.normalize(parameter_values)
-        identities = df_with_keepers.iloc[:, -1]
+        identities = self._df[[self._ID_col]]
 
-        self.array = df_with_keepers.to_numpy()
+        self.array = self._df.to_numpy()
         inputs = normalized_values.to_numpy()
         outputs = identities.to_numpy()
 
@@ -77,32 +85,32 @@ class Digestion:
             self.array, inputs, outputs
         )
 
-    def keep_these(
-        self,
-        *,
-        brightness: tuple = (3.1, 3.8),
-        min_length: int = 10,
-        diffusion: tuple = (0.3, 3.5),
-    ) -> pd.DataFrame:
-        """Establishes ground truths
+    # def keep_these(
+    #     self,
+    #     *,
+    #     brightness: tuple = (3.1, 3.8),
+    #     min_length: int = 10,
+    #     diffusion: tuple = (0.3, 3.5),
+    # ) -> pd.DataFrame:
+    #     """Establishes ground truths
 
-        Args:
-            brightness (tuple, optional): min and max brightness values. Defaults to (3.1, 3.8).
-            min_length (int, optional): minimum length cutoff. Defaults to 10.
-            diffusion (tuple, optional): min and max diffusion values. Defaults to (0.3, 3.5).
+    #     Args:
+    #         brightness (tuple, optional): min and max brightness values. Defaults to (3.1, 3.8).
+    #         min_length (int, optional): minimum length cutoff. Defaults to 10.
+    #         diffusion (tuple, optional): min and max diffusion values. Defaults to (0.3, 3.5).
 
-        Returns:
-            pd.DataFrame: adds binary value to whether a row represents a trajectory
-        """
-        assert min_length < np.max(self._df["Length (frames)"])
-        keepers = self._df.loc[
-            (
-                (self._df["Average_Brightness"].between(brightness[0], brightness[1]))
-                & (self._df["Length (frames)"] > min_length)
-                & (self._df["MSD"].between(diffusion[0], diffusion[1]))
-            )
-        ].assign(Keep=1)
-        return pd.merge(self._df, keepers, how="left").fillna(0)
+    #     Returns:
+    #         pd.DataFrame: adds binary value to whether a row represents a trajectory
+    #     """
+    #     assert min_length < np.max(self._df["Length (frames)"])
+    #     keepers = self._df.loc[
+    #         (
+    #             (self._df["Average_Brightness"].between(brightness[0], brightness[1]))
+    #             & (self._df["Length (frames)"] > min_length)
+    #             & (self._df["MSD"].between(diffusion[0], diffusion[1]))
+    #         )
+    #     ].assign(Keep=1)
+    #     return pd.merge(self._df, keepers, how="left").fillna(0)
 
     @staticmethod
     def normalize(df: pd.DataFrame) -> pd.DataFrame:
@@ -299,8 +307,8 @@ class Learning:
         Returns:
             pd.DataFrame: original data with ID predictions
         """
-        predictions = self.model.predict(array)
-        df["Model Predictions"] = predictions
+        model_predictions = self.model.predict(array)
+        df["Model Predictions"] = model_predictions
         return df
 
 
@@ -370,7 +378,7 @@ class Export:
 
 if __name__ == "__main__":
     pre_processed_info = File().read_file().identify_parameters()
-    digested_data = Digestion(pre_processed_info.data)
+    digested_data = Digestion(pre_processed_info.data, "Valid")
     digested_data()
 
     ml_modeling = Learning(
@@ -383,7 +391,7 @@ if __name__ == "__main__":
     new_epochs = int(input("Choose the number of epochs : "))
     ml_modeling.k_fold_validation(num_epochs=new_epochs)
 
-    test_file = File().read_file().identify_parameters()
+    test_file = File().read_file()
     test_data = TestCase(test_file.data)
 
     predictions = ml_modeling.predict_type(test_data.inputs, test_data.df)

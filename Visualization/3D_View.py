@@ -5,10 +5,8 @@ from functools import reduce
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from tkinter import Tk
 from tkinter import filedialog
 from glob import glob
-import operator
 import formulas as fo
 
 
@@ -35,18 +33,16 @@ class Metadata:
 class Reader:
     def __init__(self):
         self.df = None
-        root = Tk()
-        root.withdraw()
 
     def combine_files(self):
         while True:
             rootdir = filedialog.askdirectory()
-            filenames = glob(rootdir + "/*.csv")
+            filenames = glob(rootdir + "/*pre_processed.csv")
             if filenames:
                 self.df = pd.concat(map(pd.read_csv, filenames))
                 break
             else:
-                print("no csv files found in selected")
+                print("no csv files found in selected directory")
                 sys.exit()
 
     def single_file(self):
@@ -86,12 +82,12 @@ class Analyze:
         data = self.df.groupby("Trajectory")[["x", "y"]].apply(
             fo.Calc.one_step_MSD, self._metadata
         )
-        data = pd.DataFrame(data.to_list(), columns=["SDs", "MSD"])
+        data = pd.DataFrame(data.to_list(), columns=["SDs", "MSD (\u03BCm\u00b2/sec)"])
         data.index += 1
         data.reset_index(inplace=True)
         data = data.rename(columns={"index": "Trajectory"})
         self.df["SDs"] = reduce(operator.add, data["SDs"])
-        self.df = self.df.merge(data[["Trajectory", "MSD"]])
+        self.df = self.df.merge(data[["Trajectory", "MSD (\u03BCm\u00b2/sec)"]])
         return self
 
     def identify(
@@ -103,10 +99,23 @@ class Analyze:
             "dim": ("Average_Brightness", "<", 3.1),
             "bright": ("Average_Brightness", ">", 3.8),
             "short": ("Length (frames)", "<", 10),
-            "slow": ("MSD", "<", 0.3),
-            "fast": ("MSD", ">", 3.5),
+            "slow": ("MSD (\u03BCm\u00b2/sec)", "<", 0.3),
+            "fast": ("MSD (\u03BCm\u00b2/sec)", ">", 3.5),
         },
     ):
+        """Draw descriptions for values in specified dataframe column
+
+        Args:
+            sep (str, optional): what will separate multiple descriptions (i.e. dim '+' short).
+                Defaults to "\u00B7".
+            keepers (str, optional): string for trajectories that pass cutoffs.
+                Defaults to "Valid".
+            criteria (dict, optional): Descriptor key with tuple value containing
+                column name, operator, and float criterion.
+                Defaults to { "dim": ("Average_Brightness", "<", 3.1), "bright": ("Average_Brightness", ">", 3.8),
+                "short": ("Length (frames)", "<", 10), "slow": ("MSD (\u03BCm\u00b2/sec)", "<", 0.3), "fast": ("MSD (\u03BCm\u00b2/sec)", ">", 3.5), }.
+
+        """
         ops = {
             "<": operator.lt,
             "=<": operator.le,
@@ -118,8 +127,10 @@ class Analyze:
             col, op, num = val[0], val[1], val[2]
             self.df.loc[ops[op](self.df[col], num), key] = f"{key} {sep} "
         self.df = self.df.fillna("")
-        self.df["ID"] = self.df.iloc[:, -5:].sum(axis=1)
+        self.df["ID"] = self.df.iloc[:, -len(criteria) :].sum(axis=1)
+        # Removes ending from last addition
         self.df["ID"] = self.df["ID"].str.rstrip(f" {sep} ")
+        # Trajectories with no tag are set to the keepers variable
         self.df["ID"].loc[self.df["ID"] == ""] = keepers
         return self
 
@@ -131,7 +142,7 @@ class Plot:
         *,
         x: str = "Average_Brightness",
         y: str = "Length (frames)",
-        z: str = "MSD",
+        z: str = "MSD (\u03BCm\u00b2/sec)",
         id_col="ID",
     ):
         assert {"Trajectory", x, y, z, id_col} and set(df.columns)
@@ -140,7 +151,7 @@ class Plot:
         self._y_label = y
         self._z_label = z
         self._point_labels = id_col
-        self._title = "Trajectories"
+        self._title = "Trajectory Characteristics"
 
     def display(self):
         fig = plt.figure(figsize=(10, 5))
@@ -167,6 +178,6 @@ if __name__ == "__main__":
     file = Reader()
     file.single_file()
     data = Analyze(meta, file.df)
-    data.trio_lyze().identify()
+    data.identify()
     figure = Plot(data.df)
     figure.display()
