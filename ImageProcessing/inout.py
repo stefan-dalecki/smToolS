@@ -313,7 +313,12 @@ class FileReader:
                 traj_df = pd.DataFrame.from_dict(traj_dict).assign(Trajectory=i + 1)
                 track_df = pd.concat([track_df, traj_df]).reset_index(drop=True)
             track_df.rename(columns={"t": "Frame"}, inplace=True)
-            self.pre_processed_files += [file, track_df]
+            track_df["x"], track_df["y"] = track_df["x"].astype(float), track_df[
+                "y"
+            ].astype(float)
+            track_df["x"] *= 0.0217**-1
+            track_df["y"] *= 0.0217**-1
+            self.pre_processed_files += [(file, track_df)]
 
 
 class Movie:
@@ -408,16 +413,10 @@ class Export:
 
     def csv(self) -> None:
         """Export data as csv"""
-        try:
-            self._df.to_csv(self._name, index=False)
-            print("Export Successful")
-        except Exception as e:
-            print(f"Export Failed\nReason: {e}")
+        self._df.to_csv(self._name, index=False)
+        print("Export Successful")
 
     def xlsx(self) -> None:
         """Export data as xlsx"""
-        try:
-            self._df.to_excel(self._name, index=False, sheet_name="Raw")
-            print("Export Successful")
-        except Exception as e:
-            print(f"Export Failed\nReason: {e}")
+        self._df.to_excel(self._name, index=False, sheet_name="Raw")
+        print("Export Successful")

@@ -22,9 +22,10 @@ class Calc:
         Returns:
             pd.DataFrame: updated trajectory data with trio
         """
-        df["Average_Brightness"] = df.groupby("Trajectory")["Brightness"].transform(
-            np.mean
-        )
+        if "Brightness" in df.columns:
+            df["Average_Brightness"] = df.groupby("Trajectory")["Brightness"].transform(
+                np.mean
+            )
         df["Length (frames)"] = df.groupby("Trajectory")["Trajectory"].transform("size")
         data = df.groupby("Trajectory")[["x", "y"]].apply(Calc.one_step_MSD, metadata)
         data = pd.DataFrame(data.to_list(), columns=["SDs", "MSD (\u03BCm\u00b2/sec)"])
