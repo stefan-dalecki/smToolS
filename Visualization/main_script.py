@@ -39,6 +39,7 @@ class Reader:
         # This can only be done when files are already pre_processed by smToolS
         while True:
             rootdir = filedialog.askdirectory()
+            print("Grouping Files...")
             filenames = glob(rootdir + "/*pre_processed.csv")
             if filenames:
                 self.df = pd.concat(map(pd.read_csv, filenames))
@@ -46,18 +47,21 @@ class Reader:
             else:
                 print("no csv files found in selected directory")
                 sys.exit()
+        print("Files grouped successfully")
 
     def single_file(self):
         try:
             file_name = filedialog.askopenfilename()
+            print(f"{file_name}\nLoading file...")
             if file_name.endswith(".csv"):
-                self.df = pd.read_csv(file_name, index_col=[0])
+                self.df = pd.read_csv(file_name)
             elif file_name.endswith(".xlsx"):
-                self.df = pd.read_excel(file_name, index_col=[0])
+                self.df = pd.read_excel(file_name)
             else:
                 raise TypeError
         except TypeError:
             print(f"{os.path.splitext(file_name)[1]} --- File type not supported")
+        print("File loaded successfully")
 
 
 class Analyze:
@@ -133,7 +137,8 @@ class Analyze:
         # Removes ending from last addition
         self.df["ID"] = self.df["ID"].str.rstrip(f" {sep} ")
         # Trajectories with no tag are set to the keepers variable
-        self.df["ID"].loc[self.df["ID"] == ""] = keepers
+        self.df["ID"].loc[self.df["ID"] == ""] = keepers.copy()
+        print(self.df.head())
         return self
 
 

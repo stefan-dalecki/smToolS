@@ -42,7 +42,7 @@ class Clustering:
                 [
                     "Average_Brightness",
                     "Length (frames)",
-                    "MSD",
+                    "MSD (\u03BCm\u00b2/sec)",
                 ]
             ]
             .drop_duplicates()

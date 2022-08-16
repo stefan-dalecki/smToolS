@@ -224,7 +224,7 @@ class Find:
         full_str: str,
         *,
         failure: str = "no date found",
-        date_format: tuple[str, str] = (r"\d{4}_\d{2}_\d{2}", "%Y-%m-%d"),
+        date_format: tuple[str, str] = (r"\d{4}_\d{2}_\d{2}", "%Y_%m_%d"),
     ) -> dict:
         """Find the date from a string (i.e. file path)
 
@@ -233,7 +233,7 @@ class Find:
             failure (str, optional): what do return when no date is found.
                 Defaults to "no date found".
             date_format (tuple[str, str], optional): the date format for searching.
-                Defaults to (r"\d{4}_\d{2}_\d{2}", "%Y-%m-%d").
+                Defaults to (r"\d{4}_\d{2}_\d{2}", "%Y_%m_%d").
 
         Returns:
             dict: _description_

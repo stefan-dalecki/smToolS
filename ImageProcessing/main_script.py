@@ -14,7 +14,7 @@ import decorators as dec
 
 
 @dec.Progress.movie_timer
-# Timing movie analysis is not helpful if you are displaying figures
+# Timing movie analysis is not helpful if you are displaying figures as
 # The time spent looking at figures is part of the analysis
 def main(file: tuple) -> pd.DataFrame:
     """Main processing pipeline
@@ -32,7 +32,6 @@ def main(file: tuple) -> pd.DataFrame:
         movie_path, trajectories = file
         movie = io.Movie(metadata, movie_path, trajectories)
         movie.update_trajectory_df(new_df=fo.Calc.trio(metadata, movie.data_df))
-        if 
         movie.save_df()
 
         print(
@@ -80,6 +79,7 @@ def main(file: tuple) -> pd.DataFrame:
             .get_kinetic()
         )
         movie.add_export_data(kin.MSD.model(msd.table))
+
         rayd = (
             kin.Director(kin.RayD(metadata, movie.data_df["SDs"].dropna()))
             .construct_kinetic()
@@ -108,6 +108,15 @@ def main(file: tuple) -> pd.DataFrame:
         )
         movie.add_export_data(TwoCompExpDecay.dictify())
 
+        ThreeCompExpDecay = (
+            cf.Director(
+                cf.ExpDecay(metadata, movie, components=3, kinetic=bsl, table=bsl.table)
+            )
+            .build_model()
+            .get_model()
+        )
+        movie.add_export_data(ThreeCompExpDecay.dictify())
+
         OneCompRayleigh = (
             cf.Director(
                 cf.RayDiff(
@@ -131,13 +140,26 @@ def main(file: tuple) -> pd.DataFrame:
         )
         movie.add_export_data(TwoCompRayleigh.dictify())
 
+        ThreeCompRayleigh = (
+            cf.Director(
+                cf.RayDiff(
+                    metadata, movie, components=3, kinetic=rayd, table=rayd.table
+                )
+            )
+            .build_model()
+            .get_model()
+        )
+        movie.add_export_data(TwoCompRayleigh.dictify())
+
         print("   Models built", end="\n" * 2)
 
         if script.booldisplay or script.boolsave:
             OneCompExpDecay.generate_plot(script.booldisplay, script.boolsave)
             TwoCompExpDecay.generate_plot(script.booldisplay, script.boolsave)
+            ThreeCompExpDecay.generate_plot(script.booldisplay, script.boolsave)
             OneCompRayleigh.generate_plot(script.booldisplay, script.boolsave)
             TwoCompRayleigh.generate_plot(script.booldisplay, script.boolsave)
+            ThreeCompRayleigh.generate_plot(script.booldisplay, script.boolsave)
 
     except RuntimeError as error:
         print(
