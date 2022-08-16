@@ -109,9 +109,12 @@ class Script:
             ]
             + ["none"]
         )
-        self.cutoff_method = fo.Form.userinput(
-            "cutoff/brigthness thresholding method", brightness_options
-        )
+        if self.filetype == "xml":
+            self.cutoff_method == "none"
+        else:
+            self.cutoff_method = fo.Form.userinput(
+                "cutoff/brigthness thresholding method", brightness_options
+            )
         if self.cutoff_method == "semi_auto":
             low_cut, high_cut = float(input("Low cutoff : ")), float(
                 input("High cutoff : ")
