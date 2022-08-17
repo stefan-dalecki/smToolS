@@ -11,7 +11,7 @@ Nonetheless, if you use this tool, please take time to mention Stefan Dalecki an
 
 The image processing toolkit utilizes three main particle tracking softwares to detect particle diffusion on a 2-dimensional surface.  
 All three return data related to particle movement, with certain Trackmate '.xml' files lacking brightness information. 
-Within the program, trackpy linking is drawn from an '.nd2' set of frames.
+Within smToolS, trackpy linking is drawn from an '.nd2' set of frames.
 Below is a short summary of each method with their respective program and output filetype used in this toolbox.  
 
 1. ParticleTrackerClassic : an ImageJ/FIJI Plugin : '.csv'
