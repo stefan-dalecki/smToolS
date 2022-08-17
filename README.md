@@ -37,6 +37,6 @@ allowing for valid outlier trajectories to be kept in exceptions where another f
 
 # Support
 
-I, Stefan Dalecki, will provide limited support of this repository starting 08/22/2022.  
+I, Stefan Dalecki, will provide limited support of this repository from 08/22/2022 onward.  
 It is yet to be determined whether another will take over my role in this project.  
 If you are interested in building upon this work, contact Dr. Joseph Falke of CU Boulder.  
