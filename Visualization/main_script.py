@@ -1,16 +1,18 @@
 import os
 import sys
 import operator
+from tkinter import filedialog
 from functools import reduce
+from glob import glob
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from tkinter import filedialog
-from glob import glob
 import formulas as fo
 
 
 class Metadata:
+    """Microscope metadata"""
+
     def __init__(
         self,
         *,
@@ -54,7 +56,7 @@ class Reader:
             file_name = filedialog.askopenfilename()
             print(f"{file_name}\nLoading file...")
             if file_name.endswith(".csv"):
-                self.df = pd.read_csv(file_name)
+                self.df = pd.read_csv(file_name, index_col=[0])
             elif file_name.endswith(".xlsx"):
                 self.df = pd.read_excel(file_name)
             else:
@@ -137,8 +139,7 @@ class Analyze:
         # Removes ending from last addition
         self.df["ID"] = self.df["ID"].str.rstrip(f" {sep} ")
         # Trajectories with no tag are set to the keepers variable
-        self.df["ID"].loc[self.df["ID"] == ""] = keepers.copy()
-        print(self.df.head())
+        self.df.loc[self.df["ID"] == "", "ID"] = keepers
         return self
 
 
@@ -184,7 +185,10 @@ if __name__ == "__main__":
     meta = Metadata()
     file = Reader()
     file.single_file()
-    data = Analyze(meta, file.df)
-    data.identify()
-    figure = Plot(data.df)
+    image_data = Analyze(meta, file.df)
+    if "Average_Brightness" in image_data.df:
+        image_data.identify()
+    else:
+        image_data.trio_lyze().identify()
+    figure = Plot(image_data.df)
     figure.display()
