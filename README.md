@@ -30,7 +30,7 @@ Once read, trajectory information is later filtered, modeled, and analyzed, with
 # Machine Learning
 
 Most data used in the 'Image Processing' directory contains only average brightness, length, and diffusion metrics.  
-However, this computational tool contains a prebuilt foundation for analyzing exceeding multidemnsional challenges  
+However, this computational tool contains a prebuilt foundation for analyzing exceeding multidimensional challenges  
 where in addition to the mentioned metrics, shape and brightness variance are considered.  
 Importantly, machine learning offers a degree of generalizability that is absent in strict filter cutoffs,  
 allowing for valid outlier trajectories to be kept in exceptions where another filter would incidentally remove them.
