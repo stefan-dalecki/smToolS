@@ -2,11 +2,15 @@ import os
 import sys
 import operator
 from tkinter import filedialog
+from math import ceil
 from functools import reduce
 from glob import glob
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from matplotlib.ticker import PercentFormatter, MultipleLocator
+from matplotlib import colors
 import formulas as fo
 
 
@@ -39,6 +43,7 @@ class Reader:
     def combine_files(self):
         """Read and combine multiple files"""
         # This can only be done when files are already pre_processed by smToolS
+        print("Select your folder...")
         while True:
             rootdir = filedialog.askdirectory()
             print("Grouping Files...")
@@ -52,6 +57,7 @@ class Reader:
         print("Files grouped successfully")
 
     def single_file(self):
+        print("Select your file")
         try:
             file_name = filedialog.askopenfilename()
             print(f"{file_name}\nLoading file...")
@@ -155,13 +161,42 @@ class Plot:
     ):
         assert {"Trajectory", x, y, z, id_col} and set(df.columns)
         self.df = df[["Trajectory", x, y, z, "ID"]]
+        self._unique_df = self.df.drop_duplicates(subset="Trajectory")
         self._x_label = x
         self._y_label = y
         self._z_label = z
         self._point_labels = id_col
         self._title = "Trajectory Characteristics"
 
-    def display(self):
+    def TwoD_Histograms(self):
+        for i in [self._x_label, self._y_label, self._z_label]:
+            data = self._unique_df[i]
+            bins = ceil(max(data)) * 10
+            fig, axs = plt.subplots(tight_layout=True, figsize=(12, 5))
+            # Tick marks are set relative to the scale on the x-axis
+            sep = 10 ** (int(f"{bins:.3e}".split("+")[-1]) - 2)
+            N, bins, patches = axs.hist(
+                data,
+                bins=[i * sep + sep for i in range(bins)],
+                edgecolor="black",
+            )
+            fracs = N / N.max()
+            norm = colors.Normalize(fracs.min(), fracs.max())
+            axs.set_xlabel(i)
+            axs.xaxis.set_major_locator(MultipleLocator(sep * 5))
+            axs.xaxis.set_minor_locator(MultipleLocator(sep))
+            # No negative brightness values should exist
+            axs.set_xlim(0, ceil(max(data)))
+            axs.set_ylabel("Frequency (#)")
+            axs.set_title(f"Binned {i}")
+            for thisfrac, thispatch in zip(fracs, patches):
+                color = plt.cm.plasma(norm(thisfrac))
+                thispatch.set_facecolor(color)
+            ax2 = axs.twinx()
+            ax2.yaxis.set_major_formatter(PercentFormatter(xmax=len(data) / 100))
+            plt.show(block=True)
+
+    def ThreeD_Scatter(self):
         fig = plt.figure(figsize=(10, 5))
         ax = fig.add_subplot(projection="3d")
         ax.set_xlabel(self._x_label, labelpad=10)
@@ -191,4 +226,5 @@ if __name__ == "__main__":
     else:
         image_data.trio_lyze().identify()
     figure = Plot(image_data.df)
-    figure.display()
+    figure.TwoD_Histograms()
+    figure.ThreeD_Scatter()
