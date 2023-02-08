@@ -5,11 +5,25 @@
 and welcome to a series of tools created to help scientists analyze single molecule movies.  
 While much of this software is specific to bio-physical research, significant effort has been made keep these tools scalable.  
 This work is, and will always be, public. Proper science benefits society, not the individual.  
-Nonetheless, if you use this tool, please take time to mention Stefan Dalecki and the Falke Lab at CU Boulder. 
+Nonetheless, if you use this tool, please take time to mention Stefan Dalecki and the Falke Lab at CU Boulder.
 
-# ImageProcessing
+# Setup
+This repo uses Python 3.11. To create a python virtual environment for this repository and install requirements, use the below commands.
+```bash
+python -m venv venv
+pip install -r requirements.txt
+```
 
-The image processing toolkit utilizes three main particle tracking softwares to detect particle diffusion on a 2-dimensional surface.  
+# Running Scripts
+This repo utilizes the python parser library. Necessary details to run all scripts must be supplied at runtime. While there are some base parsers, each file within `.\smToolS\scripts` is unique. Use the `--help` argument for additional details when trying to run a script.
+For example:
+```bash
+python .\smTools\scripts\analyze.py --help
+```
+
+# analyze.py
+
+`analyze.py`, aka the image processing toolkit utilizes three main particle tracking softwares to detect particle diffusion on a 2-dimensional surface.  
 All three return data related to particle movement, with certain Trackmate '.xml' files lacking brightness information. 
 Within smToolS, trackpy linking is drawn from an '.nd2' set of frames.
 Below is a short summary of each method with their respective program and output filetype used in this toolbox.  
@@ -20,7 +34,8 @@ Below is a short summary of each method with their respective program and output
 
 Once read, trajectory information is later filtered, modeled, and analyzed, with specific criterion for each mentioned feature toggled upon program startup.
 
-# Visualization
+
+# visualize.py
 
 |In theory|In practice|
 |---|---|
@@ -30,10 +45,16 @@ Once read, trajectory information is later filtered, modeled, and analyzed, with
 # Machine Learning
 
 Most data used in the 'Image Processing' directory contains only average brightness, length, and diffusion metrics.  
-However, this computational tool contains a prebuilt foundation for analyzing exceeding multidemnsional challenges  
+However, this computational tool contains a prebuilt foundation for analyzing exceeding multidimensional challenges  
 where in addition to the mentioned metrics, shape and brightness variance are considered.  
 Importantly, machine learning offers a degree of generalizability that is absent in strict filter cutoffs,  
 allowing for valid outlier trajectories to be kept in exceptions where another filter would incidentally remove them.
+
+## NOTE
+until TensorFlow is supported on Python 3.11, it is recommended that you use Python 3.10 and manually install the package.
+```bash
+pip install tensorflow
+```
 
 # Support
 
