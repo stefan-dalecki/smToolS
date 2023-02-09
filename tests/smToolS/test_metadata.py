@@ -1,7 +1,8 @@
 import datetime
 import os
 import sys
-from typing import AnyStr, List, Optional, Union
+from typing import AnyStr, List, Optional, Tuple, Union
+from unittest.mock import PropertyMock, patch
 
 import pandas as pd
 import pytest
@@ -53,6 +54,7 @@ class TestMetadataFunctions:
                 "this will fail",
             ),
         ],
+        ids=["find sub-str in str", "ensure failure argument usage"],
     )
     def test_find_identifiers(
         self,
@@ -88,6 +90,7 @@ class TestMetadataFunctions:
     @pytest.mark.parametrize(
         "item, options, expected_output",
         [("abc", ["abc", "def"], None), ("abc", ["123", "456", "789"], KeyError)],
+        ids=["valid attributes", "failure due to invalid attributes"],
     )
     def test__attribute_validation(
         self, item: AnyStr, options: List[AnyStr], expected_output: Optional[Exception]
@@ -97,3 +100,41 @@ class TestMetadataFunctions:
                 _ = metadata._attribute_validation(item, options)
         else:
             _ = metadata._attribute_validation(item, options)
+
+
+class TestScript:
+    script_obj: metadata.Script
+    file: Optional[str]
+    directory: Optional[str]
+    display: Optional[bool]
+    save_images: Optional[bool]
+    cutoffs: Optional[List[cons.Cutoffs]] = [
+        cons.Cutoffs.BRIGHTNESS,
+        cons.Cutoffs.LENGTH,
+        cons.Cutoffs.DIFFUSION,
+    ]
+    brightness_method: Optional[str]
+    min_length: Optional[int]
+    # diffusion_method: str
+    brightness_cutoffs: Optional[Tuple[float, float]]
+    diffusion_cutoffs: Optional[Tuple[float, float]]
+
+    @pytest.fixture(autouse=True)
+    def setup_and_tear_down(self):
+        self.empty_script_obj = metadata.Script(filetype=cons.FileTypes.CSV)
+
+    @pytest.mark.parametrize(
+        "cutoffs, expected_output",
+        [(("brightness", "length"), None), (("brightness", "not_a_cutoff"), KeyError)],
+        ids=["successful cutoff validation", "failed cutoff validation"],
+    )
+    def test__validate_cutoffs(
+        self, cutoffs: List[cons.Cutoffs], expected_output: Optional[Exception]
+    ):
+        with patch.object(metadata.Script, "cutoffs", new_callable=PropertyMock) as mock:
+            mock.return_value = cutoffs
+            if isinstance(expected_output, type) and issubclass(expected_output, Exception):
+                with pytest.raises(expected_output):
+                    _ = self.empty_script_obj._validate_cutoffs()
+            else:
+                _ = self.empty_script_obj._validate_cutoffs()

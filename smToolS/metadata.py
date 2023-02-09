@@ -143,12 +143,12 @@ class Script:
 
     """
 
-    filetype: Optional[str] = None
+    filetype: Optional[cons.FileTypes] = None
     file: Optional[str] = None
     directory: Optional[str] = None
     display: Optional[bool] = None
     save_images: Optional[bool] = None
-    cutoffs: Optional[List[str]] = None
+    cutoffs: Optional[List[cons.Cutoffs]] = None
     brightness_method: Optional[str] = None
     min_length: Optional[int] = None
     # diffusion_method: str
@@ -187,13 +187,13 @@ class Script:
         all_files.sort()
         return all_files
 
-    def _validate_cutoffs(self):
+    def _validate_cutoffs(self: Self):
         if not self.cutoffs:
             return
         for cutoff in self.cutoffs:
             _attribute_validation(cutoff, self.cutoff_options)
 
-    def _validate_brightness_method(self):
+    def _validate_brightness_method(self: Self):
         if not self.brightness_method:
             return
             # xml files cannot specify a brightness method
