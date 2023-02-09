@@ -3,6 +3,7 @@ from enum import StrEnum
 __all__ = [
     "AVERAGE_BRIGHTNESS",
     "BRIGHTNESS",
+    "DATE",
     "FILENAME",
     "FILEPATH",
     "FRAME",
@@ -31,6 +32,7 @@ from typing import List, Set
 
 AVERAGE_BRIGHTNESS = "average_brightness"
 BRIGHTNESS = "brightness"
+DATE = "date"
 FILENAME = "filename"
 FILEPATH = "filepath"
 FRAME = "frame"

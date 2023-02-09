@@ -28,7 +28,7 @@ def find_date(
     *,
     failure: str = "no date found",
     date_format: tuple[str, str] = (r"\d{4}_\d{2}_\d{2}", "%Y_%m_%d"),
-) -> dict:
+) -> Dict[str, datetime.date]:
     """Find the date from a string (i.e. file path)
 
     Args:
@@ -59,17 +59,17 @@ def find_identifiers(
     full_string: AnyStr,
     separator: AnyStr,
     value_name: AnyStr,
-    value_search_names: List,
+    value_search_names: List[AnyStr],
     *,
     failure: LiteralString = "not found",
-) -> Dict:
+) -> Dict[AnyStr, AnyStr]:
     """Find image attributes from file name
 
     Args:
         full_string (AnyStr): full string in question
         separator (AnyStr): separator between sub string elements
         value_name (AnyStr): value of interest
-        value_search_names (List): potential value names
+        value_search_names (List[AnyStr]): potential value names
         failure (LiteralStr, optional): what to return if nothing is found. Defaults to "not found".
 
     Raises:
@@ -82,16 +82,20 @@ def find_identifiers(
     # Data\Stefan\2021\2021_11_02\gas1\67pM-GRP1_ND06_01
     output = {}
     separated_full_string = [i for i in full_string.lower().split(separator)]
+    value_search_names = [name.lower() for name in value_search_names]
     for search_name in value_search_names:
         hit_indeces = [
             i for i, val in enumerate(separated_full_string) if val.find(search_name) != -1
         ]
         for hit_index in hit_indeces:
-            if "-" in separated_full_string[hit_index]:
-                if "+" in separated_full_string[hit_index]:
-                    protein_descriptions = separated_full_string[hit_index].split("+")
+            region = separated_full_string[hit_index]
+            if os.path.sep in region:
+                break
+            if "-" in region:
+                if "+" in region:
+                    protein_descriptions = region.split("+")
                 else:
-                    protein_descriptions = [separated_full_string[hit_index]]
+                    protein_descriptions = [region]
                 for protein_description in protein_descriptions:
                     concentration, protein = protein_description.split("-")
                     protein = protein.upper()
@@ -99,7 +103,7 @@ def find_identifiers(
                     concentration_units = concentration[-2:]
                     output[f"{protein} ({concentration_units})"] = concentration_value
             else:
-                output[value_name] = separated_full_string[hit_index].replace(str(search_name), "")
+                output[value_name] = region.replace(str(search_name), "")
                 break
     if not output:
         output[value_name] = failure
@@ -125,7 +129,7 @@ def reorder(df: pd.DataFrame, column_name: AnyStr, location: int) -> pd.DataFram
     return df
 
 
-def _attribute_validation(item: str, options: List[str]):
+def _attribute_validation(item: AnyStr, options: List[AnyStr]):
     if item not in options:
         message = f"'{item}' is not valid. Options include: {options}"
         raise KeyError(message)

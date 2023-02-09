@@ -34,13 +34,17 @@ Below is a short summary of each method with their respective program and output
 
 Once read, trajectory information is later filtered, modeled, and analyzed, with specific criterion for each mentioned feature toggled upon program startup.
 
+## sample
+Test it out by running the following command in the head of the repository:
+```bash
+python3.11 .\smToolS\scripts\analyze.py --file .\sample_data\2023_02_05\gas1\Traj_67pM-GRP1_ND08_01.csv
+```
 
 # visualize.py
 
-|In theory|In practice|
-|---|---|
-|A crucial part of trajectory evaluation is setting filter values to only capture 'protein molecules' (or any foreground piece) from your movies. By using the 'Visualization' tool, preliminary steps can be taken to identify various groups of molecules within your already tracked movie data. One can test various thresholding cutoffs and immediately understand which trajectories are removed and why.|![biggest](https://user-images.githubusercontent.com/89150776/184054184-067ad310-d4af-4f92-baec-6f36b0ecb39a.png)
-
+| In theory                                                                                                                                                                                                                                                                                                                                                                                                       | In practice                                                                                                       |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| A crucial part of trajectory evaluation is setting filter values to only capture 'protein molecules' (or any foreground piece) from your movies. By using the 'Visualization' tool, preliminary steps can be taken to identify various groups of molecules within your already tracked movie data. One can test various thresholding cutoffs and immediately understand which trajectories are removed and why. | ![biggest](https://user-images.githubusercontent.com/89150776/184054184-067ad310-d4af-4f92-baec-6f36b0ecb39a.png) |
 
 # Machine Learning
 
