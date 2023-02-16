@@ -252,7 +252,7 @@ class ExpDecay(ModelBuilder):
             if isinstance(self._components, int):
                 # i.e. 1, 2, 3... component models
                 model_name = (
-                    f"{num2words(self._components).capitalize()}Comp {self.__class__.__name__}"
+                    f"{num2words(self._components).capitalize()}Comp{self.__class__.__name__}"
                 )
                 self._equation = getattr(Equations, model_name)
                 NUM_LIMITS = len(signature(self._equation).parameters) - 1
