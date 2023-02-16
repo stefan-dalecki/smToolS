@@ -1,9 +1,9 @@
 [tool.ruff]
-select = ["A", "B", "C", "E", "F", "I"]
-ignore = []  # ignore none
+select = ["A", "C", "E", "F", "I"]
+ignore = ["E402"]  # ignore wrong import ordering
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
-fixable = ["A", "B", "C", "E", "F", "I"]
+fixable = ["A", "C", "E", "F", "I"]
 unfixable = []  # fix all
 
 # Exclude a variety of commonly ignored directories.
@@ -39,3 +39,7 @@ target-version = "py311"
 
 [tool.ruff.mccabe]
 max-complexity = 10
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]

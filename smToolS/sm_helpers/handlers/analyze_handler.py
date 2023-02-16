@@ -22,7 +22,10 @@ class AnalyzeHandler:
     NUM_MODELS = 3  # we only have up max three component models
 
     def __init__(
-        self, script: metadata.Script, microscope: metadata.Microscope, movie: metadata.Movie
+        self,
+        script: metadata.Script,
+        microscope: metadata.Microscope,
+        movie: metadata.Movie,
     ):
         self._script = script
         self._microscope = microscope

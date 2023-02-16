@@ -44,9 +44,11 @@ class ImportParser(BaseParser):
             "--filetype",
             required=False,
             type=str,
-            help="The file extension of your movies. Current support is for ImageJ/Particle Tracker Classic '.csv' files, "
-            "'h5' for analyzed '.nd2' files within this program, and 'xml' files for TrackMate files. Only required if "
-            "'file' is not given.",
+            help=(
+                "The file extension of your movies. Current support is for ImageJ/Particle Tracker"
+                " Classic '.csv' files, 'h5' for analyzed '.nd2' files within this program, and"
+                " 'xml' files for TrackMate files. Only required if 'file' is not given."
+            ),
         )
         return parser
 
@@ -75,7 +77,10 @@ class ScriptParser(BaseParser):
             required=False,
             default=cons.Cutoffs.list_of_options(),
             nargs="*",
-            help="Select from the following options: brightness, length, diffusion. By default, all are used.",
+            help=(
+                "Select from the following options: brightness, length, diffusion. By default, all"
+                " are used."
+            ),
         )
         parser.add_argument(
             "--brightness-method",
@@ -159,7 +164,10 @@ class ExportParser(BaseParser):
             required=False,
             default=None,
             type=str,
-            help="Location where you wish to save the output table. Default location is wherever this script is ran from.",
+            help=(
+                "Location where you wish to save the output table. Default location is wherever"
+                " this script is ran from."
+            ),
         ),
         parser.add_argument(
             "--export-as",

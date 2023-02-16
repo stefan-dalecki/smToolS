@@ -52,7 +52,8 @@ def visualize_table(
 def main(parser_args: argparse.Namespace):
     if not parser_args.display or parser_args.save_images:
         raise ValueError(
-            "This script is not worthwhile without specifying whether you want to display or save images."
+            "This script is not worthwhile without specifying whether you want to display or save "
+            "images."
         )
     logger.info("Beginning visualization.")
     parsers.ImportParser.validate(parser_args)

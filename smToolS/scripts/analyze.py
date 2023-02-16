@@ -68,7 +68,10 @@ def trio_lyze(microscope: metadata.Microscope, df: pd.DataFrame) -> pd.DataFrame
 
 
 def analyze_movie(
-    file: tuple, script: metadata.Script, microscope: metadata.Microscope, save_location: str
+    file: tuple,
+    script: metadata.Script,
+    microscope: metadata.Microscope,
+    save_location: str,
 ) -> pd.DataFrame:
     """Main processing pipeline
     Reads in movies and calculates desired metrics based on trajectory data
@@ -93,7 +96,7 @@ def analyze_movie(
     end_time = datetime.now()
     logger.info(f"Completed Movie Analysis: '{file_info}'.")
     # only log time if there are no pauses to look at figures
-    if script.brightness_method != cons.CutoffMethods.MANUAL and script.display == False:
+    if script.brightness_method != cons.CutoffMethods.MANUAL and script.display is False:
         logger.info(f"Elapsed Time: '{(end_time - start_time).total_seconds()}' sec.")
     return pd.DataFrame(handler.movie.export_dict, index=[0])
 

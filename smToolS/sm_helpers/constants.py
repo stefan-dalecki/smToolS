@@ -41,7 +41,7 @@ GASKET_ABV = "gas"
 LENGTH_W_UNITS = "length (frames)"
 MASS = "mass"
 MSD = "msd"
-MSD_W_UNITS = "msd (\u03BCm\u00b2/sec)"
+MSD_W_UNITS = "msd (\u03bcm\u00b2/sec)"
 M2 = "m2"
 ND_FILTER = "nd_filter"
 ND_FILTER_ABV = "nd"
@@ -57,11 +57,11 @@ TRAJECTORY_W_UNITS = "trajectories (#)"
 class EnumHelper:
     @classmethod
     def list_of_options(cls) -> List[str]:
-        return list(map(lambda c: c.value, cls))
+        return [c.value for c in cls]
 
     @classmethod
     def set_of_options(cls) -> Set[str]:
-        return set(map(lambda c: c.value, cls))
+        return {c.value for c in cls}
 
 
 class Cutoffs(EnumHelper, StrEnum):

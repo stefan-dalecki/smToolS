@@ -217,13 +217,15 @@ class Script:
         if self.brightness_method:
             # xml files cannot specify a brightness method
             if self.filetype == cons.FileTypes.XML and self.brightness_method != "none":
-                message = "Invalid brightness cutoff method for 'xml' filetype. Method must be " \
-                          "'None'."
+                message = (
+                    "Invalid brightness cutoff method for 'xml' filetype. Method must be 'None'."
+                )
                 raise ValueError(message)
             # the semi_auto method must be paired with already specified brightness cutoffs
             if self.brightness_method == "semi_auto" and not self.brightness_cutoffs:
-                message = "Brightness cutoffs must be specified when using 'semi_auto' cutoff " \
-                          "method."
+                message = (
+                    "Brightness cutoffs must be specified when using 'semi_auto' cutoff method."
+                )
                 raise ValueError(message)
             _attribute_validation(self.brightness_method, self.brightness_method_options)
 
@@ -510,7 +512,11 @@ class Movie:
         self._gasket = find_identifiers(filepath, os.sep, cons.GASKET, [cons.GASKET_ABV])
         self._replicate = {cons.REPLICATE: self.name[cons.FILENAME][-2:]}
         self._ND = find_identifiers(
-            self.name[cons.FILENAME], "_", cons.ND_FILTER, [cons.ND_FILTER_ABV], failure="08"
+            self.name[cons.FILENAME],
+            "_",
+            cons.ND_FILTER,
+            [cons.ND_FILTER_ABV],
+            failure="08",
         )
         self._protein = find_identifiers(
             self.name[cons.FILENAME], "_", cons.PROTEIN, cons.Proteins.list_of_options()

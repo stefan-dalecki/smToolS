@@ -44,7 +44,7 @@ class VisualizeHandler:
 
     def identify_fractions(
         self,
-        sep: Optional[str] = "\u00B7",
+        sep: Optional[str] = "\u00b7",
         keepers: Optional[str] = "Valid",
         *,
         criteria: Optional[Dict[str, tuple]] = None,
@@ -80,7 +80,11 @@ class VisualizeHandler:
 
     def display_and_or_save(self, save_location: str, save_name: str):
         figures = di.VisualizationPlots(
-            self.df, self._script.display, self._script.save_images, save_location, save_name
+            self.df,
+            self._script.display,
+            self._script.save_images,
+            save_location,
+            save_name,
         )
         figures.two_dimensional_histogram()
         figures.three_dimensional_scatter()

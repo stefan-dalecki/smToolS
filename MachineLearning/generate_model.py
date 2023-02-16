@@ -2,11 +2,12 @@
 
 import os
 import sys
-from tkinter import filedialog
 from glob import glob
+from tkinter import filedialog
+
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
+import pandas as pd
 from tensorflow import keras
 from tensorflow.keras import layers
 
@@ -81,9 +82,7 @@ class Digestion:
         inputs = normalized_values.to_numpy()
         outputs = identities.to_numpy()
 
-        self.shuffled_inputs, self.shuffled_outputs = self.shuffle_it(
-            self.array, inputs, outputs
-        )
+        self.shuffled_inputs, self.shuffled_outputs = self.shuffle_it(self.array, inputs, outputs)
 
     # def keep_these(
     #     self,
@@ -152,9 +151,7 @@ class TestCase:
         self.df = df
         self.inputs = None
 
-    def __call__(
-        self, cols: list[str] = ["Average_Brightness", "Length (frames)", "MSD"]
-    ):
+    def __call__(self, cols: list[str] = ["Average_Brightness", "Length (frames)", "MSD"]):
         inputs = self.df[[*cols]]
         normed = Digestion.normalize(inputs)
         self.inputs = normed.to_numpy()
@@ -193,9 +190,7 @@ class Learning:
                 layers.Dense(1, activation="sigmoid"),
             ]
         )
-        model.compile(
-            optimizer="rmsprop", loss="binary_crossentropy", metrics=["accuracy"]
-        )
+        model.compile(optimizer="rmsprop", loss="binary_crossentropy", metrics=["accuracy"])
         return model
 
     def prototype_model(self, *, num_epochs: int = 50) -> None:
@@ -251,9 +246,7 @@ class Learning:
                 axis=0,
             )
             val_data = shuffled_inputs[i * num_val_samples : (i + 1) * num_val_samples]
-            val_targets = shuffled_targets[
-                i * num_val_samples : (i + 1) * num_val_samples
-            ]
+            val_targets = shuffled_targets[i * num_val_samples : (i + 1) * num_val_samples]
 
             history = temp_model.fit(
                 partial_train_data,
@@ -267,9 +260,7 @@ class Learning:
             accuracy_history = history_dict["accuracy"]
             all_accuracy_scores.append(accuracy_history)
 
-        score_mean = [
-            np.mean([x[i] for x in all_accuracy_scores]) for i in range(num_epochs)
-        ]
+        score_mean = [np.mean([x[i] for x in all_accuracy_scores]) for i in range(num_epochs)]
         Display.k_fold("Accuracy", score_mean)
 
     def finalize_model(self, *, num_epochs: int) -> None:
@@ -290,9 +281,7 @@ class Learning:
 
         self.model = Learning.pipeline_model()
 
-        self.model.fit(
-            train_inputs, train_targets, epochs=num_epochs, batch_size=512, verbose=0
-        )
+        self.model.fit(train_inputs, train_targets, epochs=num_epochs, batch_size=512, verbose=0)
         self._performance_metrics = self.model.evaluate(
             validation_inputs, validation_targets, batch_size=512
         )

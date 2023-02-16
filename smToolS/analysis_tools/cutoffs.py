@@ -25,7 +25,6 @@ class Clustering:
     CLUSTER = "cluster"
 
     def __init__(self, df: pd.DataFrame) -> None:
-
         """Initialize clustering object
 
         Args:
@@ -273,9 +272,9 @@ class Diffusion:
 
     def __call__(self) -> None:
         """Call displacement cutoff function"""
-        logger.info(f"Beginning Diffusion Cutoffs.")
+        logger.info("Beginning Diffusion Cutoffs.")
         self.displacement()
-        logger.info(f"Completed Diffusion Cutoffs.")
+        logger.info("Completed Diffusion Cutoffs.")
 
     def displacement(self) -> None:
         """Use mean square displacement to filter trajectories"""

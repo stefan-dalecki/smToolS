@@ -194,9 +194,9 @@ class MSD(KineticBuilder):
         x_data = df.iloc[:, 0].values.astype(float)
         y_data = df.iloc[:, 1].values.astype(float)
         try:
-            slope, intercept, r2, pe, se = stats.linregress(x_data, y_data)
+            slope, _, r2, pe, se = stats.linregress(x_data, y_data)
         except ValueError:
-            slope, intercept, r2, pe, se = np.nan, np.nan, np.nan, np.nan, np.nan
+            slope, _, r2, *_ = np.nan, np.nan, np.nan, np.nan, np.nan
         # Convert data into um^2/sec
         export_dict = {cons.MSD_W_UNITS: slope * 10**8, "MSD R\u00b2:": r2}
         return export_dict
@@ -222,7 +222,7 @@ class RayD(KineticBuilder):
     def add_attributes(self) -> None:
         """Add name and unit"""
         self.kinetic.name = "RayDifCoef"
-        self.kinetic.unit = "\u03BCm\u00b2/sec"
+        self.kinetic.unit = "\u03bcm\u00b2/sec"
 
     def add_labels(self) -> None:
         """Add labels for display"""

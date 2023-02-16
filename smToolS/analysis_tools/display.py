@@ -90,8 +90,10 @@ class ThreeDScatter:
         self._y_label = self._y.name
         self._z = self._df.iloc[:, 2]
         self._z_label = self._z.name
-        self._title = f"K-Means Clustering (k = {self._num_clusters})\n \
-            Suggested Clusters : {self._suggested_clusters}"
+        self._title = (
+            f"K-Means Clustering (k = {self._num_clusters})\n             Suggested Clusters :"
+            f" {self._suggested_clusters}"
+        )
         return self
 
     def plot(self) -> None:
@@ -218,10 +220,13 @@ class ScatteredLine:
         # Model components follow a standardized format that can be broken down
         # by using the lines below
         if self._model.components > 1:
-            ordinal = lambda n: "%d%s" % (
-                n,
-                "tsnrhtdd"[(n // 10 % 10 != 1) * (n % 10 < 4) * n % 10 :: 4],
-            )
+
+            def ordinal(n):
+                return "%d%s" % (
+                    n,
+                    "tsnrhtdd"[(n // 10 % 10 != 1) * (n % 10 < 4) * n % 10 :: 4],
+                )
+
             populations = [
                 "{0:.3f}".format(i / sum(self._model.popt[: self._model.components]))
                 for i in self._model.popt[: self._model.components]
@@ -245,12 +250,12 @@ class ScatteredLine:
                     ordinal(i + 1)
                     + " Frac: "
                     + str(populations[i])
-                    + " \u00B1 "
+                    + " \u00b1 "
                     + str(population_covariances[i])
                 )
                 ax1_label += (
                     f"\n   {time_constants[i]}"
-                    + " \u00B1 "
+                    + " \u00b1 "
                     + str(time_constant_covariances[i])
                     + f" {self._model.kinetic.unit}\n"
                 )
@@ -262,7 +267,7 @@ class ScatteredLine:
             )
             ax1_label += (
                 str(time_constant)
-                + " \u00B1 "
+                + " \u00b1 "
                 + str(time_constant_covariance)
                 + f" {self._model.kinetic.unit}\n"
             )
@@ -294,9 +299,8 @@ class ScatteredLine:
         if save:
             filename = os.path.join(
                 save_location,
-                f"{self._model.movie.name[cons.FILENAME]}_{self._model.kinetic.name}_{self._model.model_name}".replace(
-                    " ", ""
-                ),
+                f"{self._model.movie.name[cons.FILENAME]}_{self._model.kinetic.name}_{self._model.model_name}"
+                .replace(" ", ""),
             )
             logger.info(f"Saving ---{__class__.__name__}--- to '{filename}'.")
             plt.savefig(filename)
@@ -377,7 +381,7 @@ class VisualizationPlots:
         ax.set_zlabel(self._z_label, labelpad=10)
         ax.set_title(self._title)
         groups = self.df.groupby(self.df[self._id_col])
-        for name, group in groups:
+        for _name, group in groups:
             ax.scatter3D(
                 group[self._x_label],
                 group[self._y_label],

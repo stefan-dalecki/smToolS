@@ -1,12 +1,18 @@
 ﻿repos:
-  - repo: https://github.com/PyCQA/docformatter
-    rev: v1.5.0
+  - repo: https://github.com/psf/black
+    rev: '23.1.0'
     hooks:
-      - id: docformatter
-        args: [--in-place --config ./pyproject.toml ]
+      - id: black
+        args: [
+          --config=pyproject.toml,
+          --preview
+        ]
   - repo: https://github.com/charliermarsh/ruff-pre-commit
     rev: 'v0.0.247'
     hooks:
       - id: ruff
-        args: [--fix, --show-fixes]
+        args: [
+          --fix,
+          --show-fixes
+        ]
 
