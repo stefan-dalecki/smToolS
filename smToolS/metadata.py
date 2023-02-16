@@ -1,4 +1,4 @@
-"""Read in and out data"""
+"""Read in and out data."""
 import copy
 import dataclasses
 import logging
@@ -27,19 +27,20 @@ def find_date(
     full_str: str,
     *,
     failure: str = "no date found",
-    date_format: tuple[str, str] = (r"\d{4}_\d{2}_\d{2}", "%Y_%m_%d"),
+    date_format: Tuple[str, str] = (r"\d{4}_\d{2}_\d{2}", "%Y_%m_%d"),
 ) -> Dict[str, datetime.date]:
-    """Find the date from a string (i.e. file path)
+    """Find the date from a string (i.e. file path).
 
     Args:
-        full_str (str): full string to search
-        failure (str, optional): what do return when no date is found.
+        full_str: full string to search
+        failure: what do return when no date is found.
             Defaults to "no date found".
-        date_format (tuple[str, str], optional): the date format for searching.
+        date_format: the date format for searching.
             Defaults to (r"\d{4}_\d{2}_\d{2}", "%Y_%m_%d").
 
-    Returns:
-        dict: _description_
+    Returns
+    -------
+       Dict[str, datetime.date]: "date" key with actual date value
     """
     # \d{4}_\d{2}_\d{2} is the same as saying 1234_12_12, four numbers followed by
     # two numbers, followed by another two numbers. Month and day are not distinguished.
@@ -56,32 +57,34 @@ def find_date(
 
 
 def find_identifiers(
-    full_string: AnyStr,
-    separator: AnyStr,
-    value_name: AnyStr,
-    value_search_names: List[AnyStr],
+    full_string: str,
+    separator: str,
+    value_name: str,
+    value_search_names: List[str],
     *,
     failure: LiteralString = "not found",
-) -> Dict[AnyStr, AnyStr]:
-    """Find image attributes from file name
+) -> Dict[str, str]:
+    """Find image attributes from file name.
 
     Args:
-        full_string (AnyStr): full string in question
-        separator (AnyStr): separator between sub string elements
-        value_name (AnyStr): value of interest
-        value_search_names (List[AnyStr]): potential value names
-        failure (LiteralStr, optional): what to return if nothing is found. Defaults to "not found".
+        full_string: full string in question
+        separator: separator between sub string elements
+        value_name: value of interest
+        value_search_names: potential value names
+        failure: what to return if nothing is found. Defaults to "not found".
 
-    Raises:
+    Raises
+    ------
         RuntimeError: nothing is found
 
-    Returns:
-        Dict: search result as dictionary
+    Returns
+    -------
+        Dict[str, str]: search result as dictionary
     """
     # Files named as follows can easily be interpreted by this function
     # Data\Stefan\2021\2021_11_02\gas1\67pM-GRP1_ND06_01
     output = {}
-    separated_full_string = [i for i in full_string.lower().split(separator)]
+    separated_full_string = list(full_string.lower().split(separator))
     value_search_names = [name.lower() for name in value_search_names]
     for search_name in value_search_names:
         hit_indeces = [
@@ -110,15 +113,16 @@ def find_identifiers(
     return output
 
 
-def reorder(df: pd.DataFrame, column_name: AnyStr, location: int) -> pd.DataFrame:
-    """Reorder dataframe columns
+def reorder(df: pd.DataFrame, column_name: str, location: int) -> pd.DataFrame:
+    """Reorder dataframe columns.
 
     Args:
-        df (pd.DataFrame): dataframe
-        column_name (AnyStr): name of column to move
-        location (int): new column location index
+        df: dataframe
+        column_name: name of column to move
+        location: new column location index
 
-    Returns:
+    Returns
+    -------
         pd.DataFrame: rearrange dataframe
     """
     if column_name not in df.columns:
@@ -129,7 +133,13 @@ def reorder(df: pd.DataFrame, column_name: AnyStr, location: int) -> pd.DataFram
     return df
 
 
-def _attribute_validation(item: AnyStr, options: List[AnyStr]):
+def _attribute_validation(item: str, options: List[str]) -> None:
+    """Simple checker that ensures a value is in a list of options.
+
+    Raises
+    ------
+        KeyError: value is not among options
+    """
     if item not in options:
         message = f"'{item}' is not valid. Options include: {options}"
         raise KeyError(message)
@@ -138,10 +148,7 @@ def _attribute_validation(item: AnyStr, options: List[AnyStr]):
 # I wish this was frozen but when manually setting cutoffs, we do need to change this class here
 @dataclasses.dataclass
 class Script:
-    """
-    Setup info for usage throughout script
-
-    """
+    """Setup info for usage throughout script."""
 
     filetype: Optional[cons.FileTypes] = None
     file: Optional[str] = None
@@ -155,7 +162,7 @@ class Script:
     brightness_cutoffs: Optional[Tuple[float, float]] = None
     diffusion_cutoffs: Optional[Tuple[float, float]] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self._validate_cutoffs()
         self._validate_brightness_method()
         if self.filetype:
@@ -164,66 +171,86 @@ class Script:
             self.filetype = os.path.splitext(self.file)[1][1:]  # return file extension without '.'
 
     @property
-    def cutoff_options(self):
+    def cutoff_options(self) -> List[str]:
+        """Returns all cutoff options.
+
+        Returns
+        -------
+            cons.Cutoffs: all cutoff options
+        """
         return cons.Cutoffs.list_of_options()
 
     @property
-    def brightness_method_options(self):
+    def brightness_method_options(self) -> List[str]:
+        """Returns brightness cutoff options."""
         return cons.CutoffMethods.list_of_options()
 
     @property
     def filetype_options(self) -> List[str]:
+        """Returns read filetypes for image processing."""
         return cons.FileTypes.read_filetypes()
 
     @property
-    def file_list(self):
+    def file_list(self) -> List[str]:
+        """Returns list of files to be analyzed in the script.
+
+        Returns
+        -------
+            List[str]: list of files
+        """
         all_files = []
         if not self.directory and self.file:
             return [self.file]  # just return file in list if we are not looking at a directory
-        for root, dirs, files in os.walk(self.directory):
+        for root, _dirs, files in os.walk(self.directory):
             for name in files:
                 if name.endswith(self.filetype):
                     all_files += [os.path.join(root, name)]
         all_files.sort()
         return all_files
 
-    def _validate_cutoffs(self: Self):
-        if not self.cutoffs:
-            return
-        for cutoff in self.cutoffs:
-            _attribute_validation(cutoff, self.cutoff_options)
+    def _validate_cutoffs(self) -> None:
+        if self.cutoffs:
+            for cutoff in self.cutoffs:
+                _attribute_validation(cutoff, self.cutoff_options)
 
-    def _validate_brightness_method(self: Self):
-        if not self.brightness_method:
-            return
+    def _validate_brightness_method(self) -> None:
+        if self.brightness_method:
             # xml files cannot specify a brightness method
-        if self.filetype == cons.FileTypes.XML and self.brightness_method != "none":
-            message = "Invalid brightness cutoff method for 'xml' filetype. Method must be 'None'."
-            raise ValueError(message)
-        # the semi_auto method must be paired with already specified brightness cutoffs
-        if self.brightness_method == "semi_auto" and not self.brightness_cutoffs:
-            message = "Brightness cutoffs must be specified when using 'semi_auto' cutoff method."
-            raise ValueError(message)
-        _attribute_validation(self.brightness_method, self.brightness_method_options)
+            if self.filetype == cons.FileTypes.XML and self.brightness_method != "none":
+                message = "Invalid brightness cutoff method for 'xml' filetype. Method must be " \
+                          "'None'."
+                raise ValueError(message)
+            # the semi_auto method must be paired with already specified brightness cutoffs
+            if self.brightness_method == "semi_auto" and not self.brightness_cutoffs:
+                message = "Brightness cutoffs must be specified when using 'semi_auto' cutoff " \
+                          "method."
+                raise ValueError(message)
+            _attribute_validation(self.brightness_method, self.brightness_method_options)
 
-    def _validate_filetype(self):
+    def _validate_filetype(self) -> None:
         _attribute_validation(self.filetype, self.filetype_options)
 
-    def _validate_cutoff_values(self):
+    def _validate_cutoff_values(self) -> None:
+        """Checks to make sure cutoffs are not negative.
+
+        Raises
+        ------
+            ValueError: cutoffs are negative
+        """
         for val in (*self.brightness_cutoffs, *self.diffusion_cutoffs):
             if val < 0.0:
                 raise ValueError(f"'{val}' : Cutoff value cannot be negative.")
 
 
 class Microscope:
-    """Microscope parameters / movie parameters"""
+    """Microscope parameters / movie parameters."""
 
     def __init__(
         self,
         pixel_size: float,
         framestep_size: float,
     ) -> None:
-        """Initialize microscope parameters
+        """Initialize microscope parameters.
 
         These values are dependent on the qualities of your microscope
         Args:
@@ -234,7 +261,7 @@ class Microscope:
         self.framestep_size = framestep_size
 
     def modify(self, **kwargs: Dict[str, any]) -> Self:
-        """Temporarily modify metadata
+        """Temporarily modify metadata.
 
         Useful if you want to run different sub-routines within your program that
         change the frame_cutoff or other characteristic
@@ -264,12 +291,13 @@ class Microscope:
         return all_steps
 
     def calc_one_step_MSD(self, df: pd.DataFrame) -> Tuple[Optional[List], Optional[List]]:
-        """Calculate preliminary mean squared displacement
+        """Calculate preliminary mean squared displacement.
 
         Args:
             df (pd.DataFrame): data for one trajectory
 
-        Returns:
+        Returns
+        -------
             tuple: mean squared displacement
         """
         df = df.reset_index(drop=True)
@@ -288,14 +316,15 @@ class Microscope:
 
 
 class FileReader:
-    """Reads raw datafile into workable table"""
+    """Reads raw datafile into workable table."""
 
     def __init__(
         self, filetype: Optional[str], filelist: Script.file_list, framestep: float
     ) -> None:
-        """Initialize file reader
+        """Initialize file reader.
 
         Args:
+        ----
             filetype (str): filetype extension
             filelist (List[str]): all file names to analyze
         """
@@ -321,16 +350,17 @@ class FileReader:
     def _sanitize_column_names(df: pd.DataFrame) -> pd.DataFrame:
         """Make column names are lower case characters
         Args:
-            df (pd.DataFrame): dataframe
+            df (pd.DataFrame): dataframe.
 
-        Returns:
+        Returns
+        -------
             pd.DataFrame: all column names are completely lowercase
         """
         df.columns = df.columns.str.lower()
         return df
 
     def _process_csv(self) -> None:
-        """Processes csv files"""
+        """Processes csv files."""
         for file in self._rawfiles:
             track_df = pd.read_csv(file, index_col=[0])
             # A quick check to see if the csv file contains trajectory data
@@ -350,7 +380,7 @@ class FileReader:
                 self.pre_processed_files += [(file, track_df)]
 
     def _process_nd2(self) -> None:
-        """Processes nd2 files"""
+        """Processes nd2 files."""
         warnings.filterwarnings("ignore", category=UserWarning)
         tp.quiet()
         # This is a python specific method for particle tracking as opposed to
@@ -412,7 +442,7 @@ class FileReader:
                         logger.info("Trajectory Linking Complete")
 
     def _process_h5(self) -> None:
-        """Read in an hdf5 file created by trackpy through an nd2"""
+        """Read in an hdf5 file created by trackpy through an nd2."""
         for file in self._rawfiles:
             with tp.PandasHDFStoreBig(file) as s:
                 track_df = pd.concat(s)
@@ -437,7 +467,7 @@ class FileReader:
                 self.pre_processed_files += [(file, track_df)]
 
     def _process_xml(self) -> None:
-        """Read in an xml file generated by trackmate in ImageJ"""
+        """Read in an xml file generated by trackmate in ImageJ."""
         for file in self._rawfiles:
             root = ET.fromstring(open(file, encoding="utf-8").read())
             # Find column names based on first entry
@@ -461,12 +491,13 @@ class FileReader:
 
 
 class Movie:
-    """Individual movie object class"""
+    """Individual movie object class."""
 
     def __init__(self, script_metadata: Script, filepath: str, trajectory_df: pd.DataFrame) -> None:
-        """Initialize movie object
+        """Initialize movie object.
 
         Args:
+        ----
             script_metadata (Script): persistent metadata
             filepath (str): full file location
             trajectory_df (pd.DataFrame): initial trajectory data
@@ -488,9 +519,7 @@ class Movie:
         self.figure_title = copy.deepcopy(self.name[cons.FILENAME])
 
     def _init_export_dict(self, filepath: str) -> Dict:
-        """
-        Create the initial export dictionary
-        """
+        """Create the initial export dictionary."""
         # Only private variables (self._) are used to further build your output table
         export_dict = {cons.FILEPATH: filepath}
         for key, val in self.__dict__.items():
@@ -500,23 +529,25 @@ class Movie:
         return export_dict
 
     def add_export_data(self, new_dict: Dict) -> None:
-        """Builds export dictionary
+        """Builds export dictionary.
 
         Args:
+        ----
             new_dict (dict): key (column) and values (cell) for export
         """
         self.export_dict.update(new_dict)
 
     def update_trajectory_df(self, *, new_df: pd.DataFrame) -> None:
-        """Updates data_df attribute
+        """Updates data_df attribute.
 
         Args:
+        ----
             new_df (pd.DataFrame): updated (thresholded) trajectory data
         """
-        setattr(self, "data_df", new_df)
+        self.data_df = new_df
 
     def save_df(self, prefix: AnyStr):
-        """Saves trajectory data post-cutoffs"""
+        """Saves trajectory data post-cutoffs."""
         NAME = os.path.splitext(self.filepath)[0]
         self.data_df.to_excel(
             f"{NAME}_{prefix}_data.xlsx",
@@ -526,7 +557,7 @@ class Movie:
 
 
 class Export:
-    """Export class"""
+    """Export class."""
 
     export_file_types = cons.FileTypes.export_filetypes
 
@@ -541,9 +572,10 @@ class Export:
         export_filetype: Optional[cons.FileTypes.export_filetypes],
         save_filename: Optional[AnyStr] = "summary",
     ) -> None:
-        """Initialize export class object
+        """Initialize export class object.
 
         Args:
+        ----
             save_filename (AnyStr): output savefile name
             df (pd.DataFrame): export dataframe
             export_filetype (cons.FileTypes.export_filetypes): file extension
@@ -561,9 +593,9 @@ class Export:
         logger.info(f"Export successful. Filetype: '{self._file_ext}'")
 
     def csv(self) -> None:
-        """Export data as csv"""
+        """Export data as csv."""
         self._df.to_csv(self._name, index=False)
 
     def xlsx(self) -> None:
-        """Export data as xlsx"""
+        """Export data as xlsx."""
         self._df.to_excel(self._name, index=False, sheet_name="Raw")

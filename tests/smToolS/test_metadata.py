@@ -1,15 +1,10 @@
 import datetime
 import os
-import sys
 from typing import AnyStr, List, Optional, Tuple, Union
 from unittest.mock import PropertyMock, patch
 
 import pandas as pd
 import pytest
-
-script_path = os.path.realpath(__file__)
-tool_path = os.path.realpath(os.path.join(script_path, "..", "..", ".."))
-sys.path.insert(0, tool_path)
 
 from smToolS import metadata
 from smToolS.sm_helpers import constants as cons
@@ -38,32 +33,32 @@ class TestMetadataFunctions:
         "full_str, sep, value_name, value_search_names, failure, expected_str",
         [
             (
-                r"2021\2021_11_02\gas1\67pM-GRP1_ND06_01",
-                os.sep,
-                cons.GASKET,
-                [cons.GASKET_ABV],
-                "this will not fail",
-                "1",
+                    r"2021\2021_11_02\gas1\67pM-GRP1_ND06_01",
+                    os.sep,
+                    cons.GASKET,
+                    [cons.GASKET_ABV],
+                    "this will not fail",
+                    "1",
             ),
             (
-                r"2021\2021_11_02\gas1\67pM-GRP1_ND06_01",
-                "_",
-                cons.GASKET,
-                [cons.GASKET_ABV],
-                "this will fail",
-                "this will fail",
+                    r"2021\2021_11_02\gas1\67pM-GRP1_ND06_01",
+                    "_",
+                    cons.GASKET,
+                    [cons.GASKET_ABV],
+                    "this will fail",
+                    "this will fail",
             ),
         ],
         ids=["find sub-str in str", "ensure failure argument usage"],
     )
     def test_find_identifiers(
-        self,
-        full_str: AnyStr,
-        sep: AnyStr,
-        value_name: AnyStr,
-        value_search_names: List[AnyStr],
-        failure: AnyStr,
-        expected_str: AnyStr,
+            self,
+            full_str: AnyStr,
+            sep: AnyStr,
+            value_name: AnyStr,
+            value_search_names: List[AnyStr],
+            failure: AnyStr,
+            expected_str: AnyStr,
     ):
         actual_return = metadata.find_identifiers(
             full_str, sep, value_name, value_search_names, failure=failure
@@ -77,7 +72,7 @@ class TestMetadataFunctions:
         ids=["successful reorder", "reorder raises KeyError"],
     )
     def test_reorder(
-        self, column_name: AnyStr, location: int, expected_output: Union[AnyStr, Exception]
+            self, column_name: AnyStr, location: int, expected_output: Union[AnyStr, Exception]
     ):
         if isinstance(expected_output, type) and issubclass(expected_output, Exception):
             with pytest.raises(expected_output):
@@ -93,7 +88,7 @@ class TestMetadataFunctions:
         ids=["valid attributes", "failure due to invalid attributes"],
     )
     def test__attribute_validation(
-        self, item: AnyStr, options: List[AnyStr], expected_output: Optional[Exception]
+            self, item: AnyStr, options: List[AnyStr], expected_output: Optional[Exception]
     ):
         if isinstance(expected_output, type) and issubclass(expected_output, Exception):
             with pytest.raises(expected_output):
@@ -113,7 +108,7 @@ class TestScript:
         cons.Cutoffs.LENGTH,
         cons.Cutoffs.DIFFUSION,
     ]
-    brightness_method: Optional[str]
+    brightness_method: Optional[cons.CutoffMethods]
     min_length: Optional[int]
     # diffusion_method: str
     brightness_cutoffs: Optional[Tuple[float, float]]
@@ -121,7 +116,8 @@ class TestScript:
 
     @pytest.fixture(autouse=True)
     def setup_and_tear_down(self):
-        self.empty_script_obj = metadata.Script(filetype=cons.FileTypes.CSV)
+        self.empty_csv_object = metadata.Script(filetype=cons.FileTypes.CSV)
+        self.empty_xml_object = metadata.Script(filetype=cons.FileTypes.XML)
 
     @pytest.mark.parametrize(
         "cutoffs, expected_output",
@@ -129,12 +125,39 @@ class TestScript:
         ids=["successful cutoff validation", "failed cutoff validation"],
     )
     def test__validate_cutoffs(
-        self, cutoffs: List[cons.Cutoffs], expected_output: Optional[Exception]
+            self, cutoffs: List[str], expected_output: Optional[Exception]
     ):
         with patch.object(metadata.Script, "cutoffs", new_callable=PropertyMock) as mock:
             mock.return_value = cutoffs
             if isinstance(expected_output, type) and issubclass(expected_output, Exception):
                 with pytest.raises(expected_output):
-                    _ = self.empty_script_obj._validate_cutoffs()
+                    self.empty_csv_object._validate_cutoffs()
             else:
-                _ = self.empty_script_obj._validate_cutoffs()
+                self.empty_csv_object._validate_cutoffs()
+
+    @pytest.mark.parametrize(
+        "filetype, cutoff_method, expected_output",
+        [
+            (cons.FileTypes.CSV, cons.CutoffMethods.AUTO, None),
+            (cons.FileTypes.CSV, "not_a_method", KeyError),
+            (cons.FileTypes.CSV, None, None),
+            (cons.FileTypes.XML, cons.CutoffMethods.SEMI_AUTO, ValueError),
+        ],
+        ids=["successful cutoff validation", "failed cutoff validation", "no cutoffs are fine",
+             "missing cutoff values"],
+    )
+    def test__validate_brightness_method(self,
+                                         filetype: cons.FileTypes,
+                                         cutoff_method: Union[cons.CutoffMethods, str],
+                                         expected_output: Optional[Exception]):
+        with patch.object(metadata.Script, "brightness_method", new_callable=PropertyMock) as mock:
+            mock.return_value = cutoff_method
+            if filetype == cons.FileTypes.XML and cutoff_method == cons.CutoffMethods.SEMI_AUTO:
+                with pytest.raises(ValueError):
+                    self.empty_xml_object._validate_brightness_method()
+            else:
+                if isinstance(expected_output, type) and issubclass(expected_output, Exception):
+                    with pytest.raises(expected_output):
+                        self.empty_csv_object._validate_brightness_method()
+                else:
+                    self.empty_csv_object._validate_brightness_method()
