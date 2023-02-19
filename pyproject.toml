@@ -47,6 +47,7 @@ preview=true
 
 [tool.docformatter]
 blank=true
+close-quotes-on-newline=true
 in-place=true
 make-summary-multi-line=true
 pre-summary-newline=true
