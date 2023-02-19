@@ -65,7 +65,9 @@ class BasePlotter(metaclass=abc.ABCMeta):
     @property
     @abstractmethod
     def _z_label(self):
-        """z-label Will raise error if used on two-dimensional plots."""
+        """z-label
+
+        Will raise error if used on two-dimensional plots."""
         return NotImplementedError
 
     @property
