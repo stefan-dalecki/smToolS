@@ -5,8 +5,24 @@
       - id: black
         args: [
           --config=pyproject.toml,
-          --preview
         ]
+
+  - repo: https://github.com/adamchainz/blacken-docs
+    rev: '1.13.0'
+    hooks:
+      - id: blacken-docs
+        args: [
+           --line-length=100
+        ]
+
+  - repo: https://github.com/PyCQA/docformatter
+    rev: 'v1.5.0'
+    hooks:
+      - id: docformatter
+        args: [
+          --config=pyproject.toml,
+        ]
+
   - repo: https://github.com/charliermarsh/ruff-pre-commit
     rev: 'v0.0.247'
     hooks:

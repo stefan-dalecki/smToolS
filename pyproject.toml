@@ -43,3 +43,11 @@ max-complexity = 10
 [tool.black]
 line-length = 100
 target-version = ["py311"]
+preview=true
+
+[tool.docformatter]
+blank=true
+in-place=true
+pre-summary-newline=true
+wrap-descriptions=80
+wrap-summaries=100
