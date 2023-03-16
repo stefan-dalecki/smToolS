@@ -1,5 +1,5 @@
 """Filter trajectory data using brightness, length, and diffusion
-threholding."""
+thresholding."""
 import logging
 from copy import deepcopy
 from typing import Optional, Self, Tuple
@@ -25,7 +25,7 @@ class Clustering:
 
     CLUSTER = "cluster"
     ELBOW = "elbow"
-    SILHOUETTTE = "silhouette"
+    SILHOUETTE = "silhouette"
 
     def __init__(self, df: pd.DataFrame) -> None:
         """Initialize clustering object.
@@ -37,7 +37,7 @@ class Clustering:
         self.cluster_data = None
         self._scaled_features = None
         self._kmeans_kwargs = None
-        self.suggested_clusters = {self.ELBOW: None, self.SILHOUETTTE: None}
+        self.suggested_clusters = {self.ELBOW: None, self.SILHOUETTE: None}
         self._n_clusters = None
         self._cluster_of_interest = None
         self.cutoff_df = None
@@ -80,7 +80,7 @@ class Clustering:
         knee = kl.elbow
         self.suggested_clusters[self.ELBOW] = knee
         silhouette = silhouette_scores.index(max(silhouette_scores))
-        self.suggested_clusters[self.SILHOUETTTE] = silhouette
+        self.suggested_clusters[self.SILHOUETTE] = silhouette
         print(f"Suggested Clusters : \n   {self.suggested_clusters}")
         return self
 
@@ -97,7 +97,9 @@ class Clustering:
             ans = fo.Form.input_bool("Display another model?")
             if not ans:
                 break
-        self._cluster_of_interest = int(input("Which cluster would you like to keep? : "))
+        self._cluster_of_interest = int(
+            input("Which cluster would you like to keep? : ")
+        )
         return self
 
     def cluster(self) -> None:
@@ -109,7 +111,9 @@ class Clustering:
         ].index.values
         self.cutoff_df = self._df.loc[self._df[cons.TRAJECTORY].isin(keep_trajectories)]
         # A minimum trajectory length is necessary for bound lifetime modeling
-        self.min_length = np.min(self.cutoff_df.groupby([cons.TRAJECTORY])[cons.TRAJECTORY].size())
+        self.min_length = np.min(
+            self.cutoff_df.groupby([cons.TRAJECTORY])[cons.TRAJECTORY].size()
+        )
 
 
 class Brightness:
@@ -193,12 +197,16 @@ class Brightness:
         while groups <= BINS * 0.2:
             single_traj = df.drop_duplicates(subset=cons.TRAJECTORY, keep="first")
             sdf = (
-                single_traj.groupby(pd.cut(single_traj[cons.AVERAGE_BRIGHTNESS], bins=bin_sdf))
+                single_traj.groupby(
+                    pd.cut(single_traj[cons.AVERAGE_BRIGHTNESS], bins=bin_sdf)
+                )
                 .size()
                 .nlargest(groups)
             )
             cutoff_list = np.array([i.right and i.right for i in sdf.index])
-            low_out, high_out = round(np.min(cutoff_list), 3), round(np.max(cutoff_list), 3)
+            low_out, high_out = round(np.min(cutoff_list), 3), round(
+                np.max(cutoff_list), 3
+            )
             rm_outliers_df = df[df[cons.AVERAGE_BRIGHTNESS].between(low_out, high_out)]
             rm_df = rm_outliers_df.reset_index(drop=True)
             grp_df = (
@@ -260,7 +268,8 @@ class Diffusion:
         """Initialize diffusion object.
 
         Args:
-            diffusion_cutoffs (Optional[Tuple[float, float]]): low/high cutoff value (um^2/sec)
+            diffusion_cutoffs (Optional[Tuple[float, float]]):
+                low/high cutoff value (um^2/sec)
             df (pd.DataFrame): trajectory data
         """
         self._low, self._high = diffusion_cutoffs or (0, float("inf"))

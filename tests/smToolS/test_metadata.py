@@ -1,10 +1,15 @@
 import datetime
 import os
+import sys
 from typing import AnyStr, List, Optional, Tuple, Union
 from unittest.mock import PropertyMock, patch
 
 import pandas as pd
 import pytest
+
+script_path = os.path.realpath(__file__)
+tool_path = os.path.realpath(os.path.join(script_path, "..", "..", ".."))
+sys.path.insert(0, tool_path)
 
 from smToolS import metadata
 from smToolS.sm_helpers import constants as cons
@@ -15,7 +20,9 @@ class TestMetadataFunctions:
 
     @pytest.fixture(autouse=True)
     def setup_and_tear_down(self):
-        self._reorder_df = pd.DataFrame(data={"abc": [1, 2, 3], "def": [3, 4, 5], "ghi": [6, 7, 8]})
+        self._reorder_df = pd.DataFrame(
+            data={"abc": [1, 2, 3], "def": [3, 4, 5], "ghi": [6, 7, 8]}
+        )
 
     @pytest.mark.parametrize(
         "date_str, failure_str, expected_return",
@@ -131,10 +138,16 @@ class TestScript:
         [(("brightness", "length"), None), (("brightness", "not_a_cutoff"), KeyError)],
         ids=["successful cutoff validation", "failed cutoff validation"],
     )
-    def test__validate_cutoffs(self, cutoffs: List[str], expected_output: Optional[Exception]):
-        with patch.object(metadata.Script, "cutoffs", new_callable=PropertyMock) as mock:
+    def test__validate_cutoffs(
+        self, cutoffs: List[str], expected_output: Optional[Exception]
+    ):
+        with patch.object(
+            metadata.Script, "cutoffs", new_callable=PropertyMock
+        ) as mock:
             mock.return_value = cutoffs
-            if isinstance(expected_output, type) and issubclass(expected_output, Exception):
+            if isinstance(expected_output, type) and issubclass(
+                expected_output, Exception
+            ):
                 with pytest.raises(expected_output):
                     self.empty_csv_object._validate_cutoffs()
             else:
@@ -161,13 +174,20 @@ class TestScript:
         cutoff_method: Union[cons.CutoffMethods, str],
         expected_output: Optional[Exception],
     ):
-        with patch.object(metadata.Script, "brightness_method", new_callable=PropertyMock) as mock:
+        with patch.object(
+            metadata.Script, "brightness_method", new_callable=PropertyMock
+        ) as mock:
             mock.return_value = cutoff_method
-            if filetype == cons.FileTypes.XML and cutoff_method == cons.CutoffMethods.SEMI_AUTO:
+            if (
+                filetype == cons.FileTypes.XML
+                and cutoff_method == cons.CutoffMethods.SEMI_AUTO
+            ):
                 with pytest.raises(ValueError):
                     self.empty_xml_object._validate_brightness_method()
             else:
-                if isinstance(expected_output, type) and issubclass(expected_output, Exception):
+                if isinstance(expected_output, type) and issubclass(
+                    expected_output, Exception
+                ):
                     with pytest.raises(expected_output):
                         self.empty_csv_object._validate_brightness_method()
                 else:
