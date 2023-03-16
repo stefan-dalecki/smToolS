@@ -30,7 +30,7 @@ exclude = [
 ]
 per-file-ignores = {}  # ignore no specific files and checks
 
-line-length = 100
+line-length = 88
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
@@ -41,5 +41,16 @@ target-version = "py311"
 max-complexity = 10
 
 [tool.black]
-line-length = 100
+line-length = 88
 target-version = ["py311"]
+preview=true
+
+[tool.docformatter]
+blank=true
+close-quotes-on-newline=true
+in-place=true
+make-summary-multi-line=true
+pre-summary-newline=true
+recursive=true
+wrap-descriptions=68
+wrap-summaries=88

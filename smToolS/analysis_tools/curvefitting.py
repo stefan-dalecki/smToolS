@@ -1,11 +1,11 @@
-"""Fit kinetic data to models
-Once kinetic (kinetics.py) raw data is organized,
-K-off (BSL) and other features can be extracted"""
+"""Fit kinetic data to models Once kinetic (kinetics.py) raw data is organized,
+K-off (BSL) and other features can be extracted."""
 import copy
 import itertools
 import logging
+from abc import ABCMeta, abstractmethod
 from inspect import signature
-from typing import Self
+from typing import Dict, Self, Type, Union
 
 import numpy as np
 import pandas as pd
@@ -22,7 +22,7 @@ logger.setLevel(logging.INFO)
 
 
 def e_estimation(df: pd.DataFrame) -> float:
-    """Estimate decay time constant
+    """Estimate decay time constant.
 
     Args:
         df (pd.DataFrame): formatted BSL kinetic table
@@ -37,7 +37,7 @@ def e_estimation(df: pd.DataFrame) -> float:
 
 
 def ordinal(number: int) -> str:
-    """Convert integer to ordinal string
+    """Convert integer to ordinal string.
 
     Args:
         number (int): integer
@@ -52,10 +52,10 @@ def ordinal(number: int) -> str:
 
 
 class Model:
-    """Model template"""
+    """Model template."""
 
     def __init__(self) -> None:
-        """Instantiate the empty model object"""
+        """Instantiate the empty model object."""
         self.microscope = None
         self.movie = None
         self.kinetic = None
@@ -71,11 +71,11 @@ class Model:
         self.R2 = None
 
     def convert(self) -> Self:
-        """Converts popt, containing model coefficients to proper units
-        Uses metadata to add units proper units to various metrics
+        """Converts popt, containing model coefficients to proper units Uses
+        metadata to add units proper units to various metrics.
 
         Returns:
-            self: converted data
+            self: with converted data
         """
         self.converted_popt = copy.deepcopy(self.popt)
         self.converted_pcov = copy.deepcopy(self.pcov)
@@ -110,55 +110,105 @@ class Model:
                 )
         return self
 
-    def dictify(self) -> dict:
-        """Format curve fitting data as a dictionary
-        Dictionary format is necessary for appending data to dataframe
+    def dictify(self) -> Union[np.nan, Dict[str, any]]:
+        """Format curve fitting data as a dictionary, necessary for appending
+        data to dataframe.
 
         Returns:
-            dict: export data for additional to central export data
+            Union[np.nan, Dict[str, any]]: if model fitting fails, returns np.nan; if successful,
+            return dictionary of model information
         """
         # Sometimes model fitting will fail (data cannot be described)
-        assert np.nan not in self.popt, "Model Fitting Failed, no data for update"
-        try:
-            export_dict = {}
-            prefix = f"{self.model_name} : {self.kinetic.name}"
-            if self.components == 1:
+        if np.nan in self.popt:
+            logger.warning(f"'{self.model_name}' model fitting failed, no data for update.")
+            return np.nan
+        export_dict = {}
+        prefix = f"{self.model_name} : {self.kinetic.name}"
+        if self.components == 1:
+            new_dict = {
+                f"{prefix} ({self.kinetic.unit})": self.converted_popt[0],
+                f"{prefix} Cov": self.converted_pcov[0],
+            }
+            export_dict.update(new_dict)
+        elif self.components > 1:
+            total_popt = sum(self.popt[: self.components])
+            for i in range(self.components):
+                position = ordinal(i + 1)
                 new_dict = {
-                    f"{prefix} ({self.kinetic.unit})": self.converted_popt[0],
-                    f"{prefix} Cov": self.converted_pcov[0],
+                    f"{prefix} {position} Pop %": 100 * self.popt[i] / total_popt,
+                    f"{prefix} {position} Pop Cov": self.pcov[i],
+                    f"{prefix} {position} Metric ({self.kinetic.unit})": self.converted_popt[
+                        i + self.components
+                    ],
+                    f"{prefix} {position} Metric Cov": self.converted_pcov[i + self.components],
                 }
                 export_dict.update(new_dict)
-            elif self.components > 1:
-                total_popt = sum(self.popt[: self.components])
-                for i in range(self.components):
-                    position = ordinal(i + 1)
-                    new_dict = {
-                        f"{prefix} {position} Pop %": 100 * self.popt[i] / total_popt,
-                        f"{prefix} {position} Pop Cov": self.pcov[i],
-                        f"{prefix} {position} Metric ({self.kinetic.unit})": self.converted_popt[
-                            i + self.components
-                        ],
-                        f"{prefix} {position} Metric Cov": self.converted_pcov[i + self.components],
-                    }
-                    export_dict.update(new_dict)
-            remainder_dict = {
-                f"{prefix} SumSqr": self.sumsqr,
-                f"{prefix} R\u00b2": self.R2,
-            }
-            export_dict.update(remainder_dict)
-            return export_dict
-        except AssertionError:
-            return np.nan
+        remainder_dict = {
+            f"{prefix} SumSqr": self.sumsqr,
+            f"{prefix} R\u00b2": self.R2,
+        }
+        export_dict.update(remainder_dict)
+        return export_dict
 
     def __str__(self):
+        """When calling class object as a string, return a string readout of
+        the object's attributes."""
         return str(self.__dict__)
 
 
-class Director:
-    """Directs model building"""
+class BaseModelBuilder(metaclass=ABCMeta):
+    """Base model builder."""
 
-    def __init__(self, builder: object) -> None:
-        """Prep director for building
+    def __init__(self) -> None:
+        """Creates blank model attribute."""
+        self.model = None
+
+    def generate_model(self) -> None:
+        """Establishes blank model object."""
+        self.model = Model()
+
+    @abstractmethod
+    def set_equation(self) -> None:
+        """Overridden by concrete classes.
+
+        Raises:
+            NotImplementedError: method is not overridden
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def set_guess(self) -> None:
+        """Overridden by concrete classes.
+
+        Raises:
+            NotImplementedError: method is not overridden
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_attributes(self) -> None:
+        """Overridden by concrete classes.
+
+        Raises:
+            NotImplementedError: method is not overridden
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def calculate_parameters(self) -> None:
+        """Overridden by concrete classes.
+
+        Raises:
+            NotImplementedError: method is not overridden
+        """
+        raise NotImplementedError
+
+
+class Director:
+    """Directs model building."""
+
+    def __init__(self, builder: Type[BaseModelBuilder]) -> None:
+        """Prep director for building.
 
         Args:
             builder (object): builds the model object
@@ -166,12 +216,11 @@ class Director:
         self._builder = builder
 
     def build_model(self) -> Self:
-        """Calls functions to build model
-        All these functions share across classes
-        allows for homogenous model object creation
+        """Calls functions to build model All these functions share methods
+        across classes that allow for homogenous model object creation.
 
         Returns:
-            self: class object
+            self: director after creating object with specified builder
         """
         # For additional model-able components, class structure
         # must contain these functions
@@ -183,7 +232,7 @@ class Director:
         return self
 
     def get_model(self) -> None:
-        """Retrieves generated model
+        """Retrieves generated model.
 
         Returns:
             model object
@@ -191,23 +240,11 @@ class Director:
         return self._builder.model.convert()
 
 
-class ModelBuilder:
-    """Base model builder"""
-
-    def __init__(self) -> None:
-        """Creates blank model attribute"""
-        self.model = None
-
-    def generate_model(self) -> None:
-        """Establishes blank model object"""
-        self.model = Model()
-
-
-class ExpDecay(ModelBuilder):
-    """Exponential Decay model builder
+class ExpDecay(BaseModelBuilder):
+    """Exponential Decay model builder.
 
     Args:
-        ModelBuilder (class): model builder class
+        BaseModelBuilder (class): model builder base class
     """
 
     component_options = [1, 2, 3, "ExpLin"]  # ExpLin is currently unused
@@ -221,7 +258,7 @@ class ExpDecay(ModelBuilder):
         kinetic: kin.Kinetic,
         table: pd.DataFrame,
     ) -> None:
-        """Initialize the exponential decay object
+        """Initialize the exponential decay object.
 
         Args:
             microscope (metadata.Microscope): persistent microscope attributes
@@ -231,6 +268,7 @@ class ExpDecay(ModelBuilder):
             table (pd.DataFrame): formatted data for fitting
         """
         assert components in ExpDecay.component_options, "Not a valid component description"
+        super().__init__()
         self.microscope = microscope
         self.movie = movie
         self._components = components
@@ -241,9 +279,9 @@ class ExpDecay(ModelBuilder):
         self._guess = None
 
     def set_equation(self) -> None:
-        """Finds equation for fitting based on components
-        Equation selection is based on a string completion finder
-        It is necessary to carefully name models for finding algorithm
+        """Finds equation for fitting based on components Equation selection is
+        based on a string completion finder It is necessary to carefully name
+        models for finding algorithm.
 
         Raises:
             TypeError: component value must be within class options
@@ -280,9 +318,8 @@ class ExpDecay(ModelBuilder):
             print("Component descriptor is not a valid type (int or str)")
 
     def set_guess(self) -> None:
-        """Set model fitting origin point
-        Guesses are based on previous data
-        Biologic properties are good starting points for guesses"""
+        """Set model fitting origin point Guesses are based on previous data
+        Biologic properties are good starting points for guesses."""
         # estimates based on e^(-t/tau)
         tau_estimation = e_estimation(self._df)
         if self._components == 1:
@@ -300,7 +337,7 @@ class ExpDecay(ModelBuilder):
             self._guess = [tau_estimation, 0.3]
 
     def add_attributes(self) -> None:
-        """Add basic attributes"""
+        """Add basic attributes."""
         self.model.microscope = self.microscope
         self.model.movie = self.movie
         self.model.kinetic = self.kinetic
@@ -308,7 +345,7 @@ class ExpDecay(ModelBuilder):
         self.model.components = self._components
 
     def calculate_parameters(self) -> None:
-        """Call the curve fitting function method"""
+        """Call the curve fitting function method."""
         (
             self.model.popt,
             self.model.pcov,
@@ -318,11 +355,12 @@ class ExpDecay(ModelBuilder):
         self.model.sumsqr = np.sum(self.model.residuals**2)
 
 
-class RayDiff(ModelBuilder):
-    """Rayleigh Distribution / Diffusion
+class RayDiff(BaseModelBuilder):
+    """Rayleigh Distribution / Diffusion.
 
     Args:
-        ModelBuilder (class): inherited model values"""
+        BaseModelBuilder (class): inherited model values
+    """
 
     component_options = [1, 2, 3]
 
@@ -335,7 +373,7 @@ class RayDiff(ModelBuilder):
         kinetic: kin.Kinetic,
         table: pd.DataFrame,
     ) -> None:
-        """Initialize Rayleigh object
+        """Initialize Rayleigh object.
 
         Args:
             microscope (metadata.Microscope): persistent metadata
@@ -355,9 +393,9 @@ class RayDiff(ModelBuilder):
         self._guess = None
 
     def set_equation(self) -> None:
-        """Finds equation for fitting based on components
-        Equation selection is based on a string completion finder
-        It is necessary to carefully name models for finding algorithm"""
+        """Finds equation for fitting based on components Equation selection is
+        based on a string completion finder It is necessary to carefully name
+        models for finding algorithm."""
         model_name = f"{num2words(self._components).capitalize()}Comp{self.__class__.__name__}"
         self._equation = getattr(Equations, model_name)
         NUM_LIMITS = len(signature(self._equation).parameters) - 1
@@ -368,9 +406,8 @@ class RayDiff(ModelBuilder):
         self.model.equation = self._equation
 
     def set_guess(self) -> None:
-        """Set model fitting origin point
-        Guesses are based on previous data
-        Biologic properties are good starting points for guesses"""
+        """Set model fitting origin point Guesses are based on previous data
+        Biologic properties are good starting points for guesses."""
         try:
             if self._components == 1:
                 self._guess = [1e-4, 1e-5]
@@ -384,7 +421,7 @@ class RayDiff(ModelBuilder):
             logger.warning(f"No available guesses for {self._components}-Model")
 
     def add_attributes(self) -> None:
-        """Add basic attributes"""
+        """Add basic attributes."""
         self.model.microscope = self.microscope
         self.model.movie = self.movie
         self.model.kinetic = self.kinetic
@@ -392,7 +429,7 @@ class RayDiff(ModelBuilder):
         self.model.components = self._components
 
     def calculate_parameters(self) -> None:
-        """Call curve fitting model"""
+        """Call curve fitting model."""
         (
             self.model.popt,
             self.model.pcov,
@@ -403,14 +440,15 @@ class RayDiff(ModelBuilder):
 
 
 class Equations:
-    """Holder for all fitting equations
-    Additional equations can be added as long as they match the formatting
-    of the currently present equation. Focus on the order of population
-    and time related variables."""
+    """Holder for all fitting equations Additional equations can be added as
+    long as they match the formatting of the currently present equation.
+
+    Focus on the order of population and time related variables.
+    """
 
     @staticmethod
     def OneCompExpDecay(t: float, tau: float) -> np.ndarray:
-        """One Component Exponential Decay
+        """One Component Exponential Decay.
 
         Args:
             t (float): independent time variable
@@ -423,7 +461,7 @@ class Equations:
 
     @staticmethod
     def TwoCompExpDecay(t: float, a: float, b: float, tau1: float, tau2: float) -> np.ndarray:
-        """Two Component Exponential Decay
+        """Two Component Exponential Decay.
 
         Args:
             t (float): independent time variable
@@ -441,7 +479,7 @@ class Equations:
     def ThreeCompExpDecay(
         t: float, a: float, b: float, c: float, tau1: float, tau2: float, tau3: float
     ) -> np.ndarray:
-        """Three Component Exponential Decay
+        """Three Component Exponential Decay.
 
         Args:
             t (float): independent time variable
@@ -459,7 +497,7 @@ class Equations:
 
     @staticmethod
     def OneCompRayDiff(t: float, a: float, sig: float) -> np.ndarray:
-        """One Component Rayleigh Distrubution
+        """One Component Rayleigh Distrubution.
 
         Args:
             t (float): independent time variable
@@ -473,7 +511,7 @@ class Equations:
 
     @staticmethod
     def TwoCompRayDiff(t: float, a: float, b: float, sig1: float, sig2: float) -> np.ndarray:
-        """Two Component Rayleigh Distribution
+        """Two Component Rayleigh Distribution.
 
         Args:
             t (float): independent time variable
@@ -493,7 +531,7 @@ class Equations:
     def ThreeCompRayDiff(
         t: float, a: float, b: float, c: float, sig1: float, sig2: float, sig3: float
     ) -> np.ndarray:
-        """Three Component Rayleigh Distribution
+        """Three Component Rayleigh Distribution.
 
         Args:
             t (float): independent time variable
@@ -515,7 +553,7 @@ class Equations:
 
     @staticmethod
     def ExpLinCompExpDecay(t: float, tau: float, slope: float) -> np.ndarray:
-        """Exponential and Linear Decay
+        """Exponential and Linear Decay.
 
         Args:
             t (float): indpenedent time variable
@@ -529,7 +567,7 @@ class Equations:
 
 
 class FitFunction:
-    """Fitting methods"""
+    """Fitting methods."""
 
     @staticmethod
     def curve(
@@ -538,7 +576,7 @@ class FitFunction:
         p0: list[float],
         limits: tuple = None,
     ) -> tuple:
-        """Fits curved data
+        """Fits curved data.
 
         Args:
             df (pd.DataFrame): formatted data for model fitting
@@ -568,7 +606,7 @@ class FitFunction:
 
     @staticmethod
     def linear(df: pd.DataFrame) -> tuple:
-        """Linear Regression
+        """Linear Regression.
 
         Args:
             df (pd.DataFrame): two column dataframe

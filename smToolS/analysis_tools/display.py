@@ -1,8 +1,10 @@
-"""Display figures"""
+"""Display figures."""
+import abc
 import logging
 import os
+from abc import abstractmethod
 from math import ceil
-from typing import Self
+from typing import Dict, List, Optional, Self
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,6 +14,7 @@ from matplotlib.ticker import MultipleLocator, PercentFormatter
 
 from smToolS.analysis_tools import curvefitting
 from smToolS.analysis_tools import formulas as fo
+from smToolS.analysis_tools import kinetics as kin
 from smToolS.sm_helpers import constants as cons
 
 logging.basicConfig()
@@ -19,28 +22,102 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+class BasePlotter(metaclass=abc.ABCMeta):
+    """Abstract base plot class that supports up to three-dimensional
+    figures."""
+
+    def __init__(self):
+        pass
+
+    @property
+    @abstractmethod
+    def _x_data(self):
+        """x-axis values."""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def _x_label(self):
+        """x-axis label."""
+        return NotImplementedError
+
+    @property
+    @abstractmethod
+    def _y_data(self):
+        """y-axis values."""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def _y_label(self):
+        """y-axis label."""
+        return NotImplementedError
+
+    @property
+    @abstractmethod
+    def _z_data(self):
+        """z-axis data.
+
+        Will raise error if used on two-dimensional plots
+        """
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def _z_label(self):
+        """z-label
+
+        Will raise error if used on two-dimensional plots."""
+        return NotImplementedError
+
+    @property
+    @abstractmethod
+    def _title(self):
+        """figure title."""
+        return NotImplementedError
+
+    @abstractmethod
+    def plot(self):
+        """All classes must have a method to plot their data."""
+        raise NotImplementedError
+
+
 class BrightnessHistogram:
-    """Histogram of Brightness values"""
+    """Histogram of Brightness values."""
+
+    # default axis and title values
+    _X_LABEL = "Intensity / Brightness"
+    _Y_LABEL = "Frequency"
+    _TITLE = "Binned Brightness"
 
     def __init__(
         self,
-        data: list,
+        data: List[float],
         *,
-        x_label: str = "Intensity / Brightness",
-        y_label: str = "Frequency",
-        title: str = "Binned Brightness",
+        x_label: Optional[str] = None,
+        y_label: Optional[str] = None,
+        title: Optional[str] = None,
     ) -> None:
+        """Generates a brightness histogram from a list of brightness values
+        (floats)
+
+        Args:
+            data: list of brightness values
+            x_label: optional override for x-axis label
+            y_label: optional override for y-axis label
+            title: optional override for figure title
+        """
         if min(data) < 0:
             raise ValueError(f"{min(data)} : Brightness value cannot be negative.")
         self._data = data
         # Bins are set based on a rounded version of the max value
         self._bins = ceil(max(data)) * 10
-        self._x_label = x_label
-        self._y_label = y_label
-        self._title = title
+        self._x_label = x_label or self._X_LABEL
+        self._y_label = y_label or self._Y_LABEL
+        self._title = title or self._TITLE
 
     def plot(self) -> None:
-        """Plot brightness data"""
+        """Plot brightness data."""
         fig, axs = plt.subplots(tight_layout=True, figsize=(12, 5))
         # Tick marks are set relative to the scale on the x-axis
         sep = 10 ** (int(f"{self._bins:.3e}".split("+")[-1]) - 2)
@@ -54,25 +131,47 @@ class BrightnessHistogram:
         axs.set_xlabel(self._x_label)
         axs.xaxis.set_major_locator(MultipleLocator(sep * 5))
         axs.xaxis.set_minor_locator(MultipleLocator(sep))
+
         # No negative brightness values should exist
         axs.set_xlim(0, ceil(max(self._data)))
         axs.set_ylabel(self._y_label)
         axs.set_title(self._title)
-        for thisfrac, thispatch in zip(fracs, patches):
-            color = plt.cm.plasma(norm(thisfrac))
-            thispatch.set_facecolor(color)
+
+        # Larger fractions have more intense color
+        for frac, patch in zip(fracs, patches):
+            color = plt.cm.plasma(norm(frac))
+            patch.set_facecolor(color)
         ax2 = axs.twinx()
         ax2.yaxis.set_major_formatter(PercentFormatter(xmax=len(self._data) / 100))
         plt.show(block=False)
 
 
-class ThreeDScatter:
-    """Three dimensional scatter plot"""
+class ClusterPlot:
+    """Three-dimensional scatter plot."""
 
-    def __init__(self, df: pd.DataFrame, suggested_clusters: dict, num_clusters: int) -> None:
+    def __init__(
+        self, df: pd.DataFrame, suggested_clusters: Dict[str, int], num_clusters: int
+    ) -> None:
+        """This plot is used to help determine the amount of clusters to use
+        for brightness thresholding.
+
+        The implementation of cutoffs is handled outside of this class. Here, we strictly want to
+        determine how many groups of trajectories we have in our movie. In some cases,
+        biology should take precedence over these calculations. For example, if two proteins are
+        imaged that cannot form dimers, you might only have 2-3 clusters, with an extra cluster
+        perhaps representing photo-bleaching.
+
+        Args:
+            df: trajectory data
+            suggested_clusters: elbow and silhouette score clustering suggestions
+            num_clusters: actual number of clusters displayed
+        """
+
         self._df = df
         self._suggested_clusters = suggested_clusters
         self._num_clusters = num_clusters
+
+        # set using the function `set_attributes()`
         self._x = None
         self._x_label = None
         self._y = None
@@ -82,22 +181,22 @@ class ThreeDScatter:
         self._title = None
 
     def set_attributes(self) -> Self:
-        """set figure attributes"""
+        """set figure attributes."""
         # First three columns must contain desired data
         self._x = self._df.iloc[:, 0]
-        self._x_label = self._x.name
+        self._x_label = self._x.name  # axis label is column name
         self._y = self._df.iloc[:, 1]
-        self._y_label = self._y.name
+        self._y_label = self._y.name  # axis label is column name
         self._z = self._df.iloc[:, 2]
-        self._z_label = self._z.name
+        self._z_label = self._z.name  # axis label is column name
         self._title = (
-            f"K-Means Clustering (k = {self._num_clusters})\n             Suggested Clusters :"
+            f"K-Means Clustering (k = {self._num_clusters})\nSuggested Clusters :"
             f" {self._suggested_clusters}"
         )
-        return self
+        return self  # allows for chained method calls
 
     def plot(self) -> None:
-        """Plot the figure"""
+        """Plot the figure."""
         plt.close()
         fig = plt.figure(figsize=(8, 8))
         ax = fig.add_subplot(projection="3d")
@@ -139,45 +238,45 @@ class ThreeDScatter:
         plt.show(block=False)
 
 
-# class MSDLine:
-#     def __init__(self, kinetic: object, df: pd.DataFrame, line: object) -> None:
-#         self._kinetic = kinetic
-#         self._df = df
-#         self._line = line
-#         self._x = None
-#         self._x_label = None
-#         self._y = None
-#         self._y_label = None
+class MSDLine:
+    def __init__(self, kinetic: kin.Kinetic, df: pd.DataFrame, line: None) -> None:
+        self._kinetic = kinetic
+        self._df = df
+        self._line = line
+        self._x = None
+        self._x_label = None
+        self._y = None
+        self._y_label = None
 
-#     def set_attributes(self) -> None:
-#         """set figure attributes"""
-#         self._x = self._df.iloc[:, 0]
-#         self._x_label = self._x.name
-#         self._y = self._df.iloc[:, 1]
-#         self._y_label = self._y.name
+    def set_attributes(self) -> None:
+        """set figure attributes."""
+        self._x = self._df.iloc[:, 0]
+        self._x_label = self._x.name
+        self._y = self._df.iloc[:, 1]
+        self._y_label = self._y.name
 
-#     def plot(self):
-#         x_data = self._x.values.astype(float)
-#         y_data = self._y.values.astype(float)
-#         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5), tight_layout=True)
-#         fig.suptitle(f"{self._kinetic.name} ({self._kinetic.unit})")
-#         fig.supxlabel(self._x_label)
-#         fig.supylabe(self._y_label)
-#         ax1.scatter(x_data, y_data, s=3, alpha=1, color="grey", label="Data")
-#         ax1.set_title("Linear Regression")
-#         ax1.plot(
-#             x_data,
-#         )
+    def plot(self):
+        x_data = self._x.values.astype(float)
+        y_data = self._y.values.astype(float)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5), tight_layout=True)
+        fig.suptitle(f"{self._kinetic.name} ({self._kinetic.unit})")
+        fig.supxlabel(self._x_label)
+        fig.supylabe(self._y_label)
+        ax1.scatter(x_data, y_data, s=3, alpha=1, color="grey", label="Data")
+        ax1.set_title("Linear Regression")
+        ax1.plot(
+            x_data,
+        )
 
 
 class ScatteredLine:
-    """Line overlaying scatter data"""
+    """Line overlaying scatter data."""
 
     def __init__(self, model: curvefitting.Model) -> None:
-        """Initialize plot object
+        """Initialize plot object.
 
         Args:
-            model (object): Model class object
+            model: Model class object used for displaying figure
         """
         self._model = model
 
@@ -194,11 +293,12 @@ class ScatteredLine:
         return self._model.movie.figure_title
 
     def plot(self, display: bool, save: bool, save_location: str) -> None:
-        """Generate plot
+        """Generate plot.
 
         Args:
-            display (bool): whether to display figure
-            save (bool): whether to save figure
+            display: whether to display figure
+            save: whether to save figure
+            save_location: filepath to save figure
         """
         logger.info(f"Building ---{__class__.__name__}--- for '{self._model.model_name}'.")
         x_data = self._model.kinetic.table.iloc[:, 0].values.astype(float)

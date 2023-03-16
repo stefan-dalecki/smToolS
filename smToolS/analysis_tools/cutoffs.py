@@ -1,4 +1,5 @@
-"""Filter trajectory data"""
+"""Filter trajectory data using brightness, length, and diffusion
+thresholding."""
 import logging
 from copy import deepcopy
 from typing import Optional, Self, Tuple
@@ -20,12 +21,14 @@ logger.setLevel(logging.INFO)
 
 
 class Clustering:
-    """K-means clustering thresholding"""
+    """K-means clustering thresholding."""
 
     CLUSTER = "cluster"
+    ELBOW = "elbow"
+    SILHOUETTE = "silhouette"
 
     def __init__(self, df: pd.DataFrame) -> None:
-        """Initialize clustering object
+        """Initialize clustering object.
 
         Args:
             df (pd.DataFrame): raw trajectory data
@@ -34,7 +37,7 @@ class Clustering:
         self.cluster_data = None
         self._scaled_features = None
         self._kmeans_kwargs = None
-        self.suggested_clusters = {"Elbow": None, "Silhouette": None}
+        self.suggested_clusters = {self.ELBOW: None, self.SILHOUETTE: None}
         self._n_clusters = None
         self._cluster_of_interest = None
         self.cutoff_df = None
@@ -75,9 +78,9 @@ class Clustering:
                 silhouette_scores.append([i, score])
         kl = KneeLocator(range(1, 11), sse, curve="convex", direction="decreasing")
         knee = kl.elbow
-        self.suggested_clusters["Elbow"] = knee
+        self.suggested_clusters[self.ELBOW] = knee
         silhouette = silhouette_scores.index(max(silhouette_scores))
-        self.suggested_clusters["Silhouette"] = silhouette
+        self.suggested_clusters[self.SILHOUETTE] = silhouette
         print(f"Suggested Clusters : \n   {self.suggested_clusters}")
         return self
 
@@ -88,13 +91,15 @@ class Clustering:
             kmeans.fit(self._scaled_features)
             temp_data = deepcopy(self.cluster_data)
             temp_data[self.CLUSTER] = kmeans.labels_ + 1
-            di.ThreeDScatter(
+            di.ClusterPlot(
                 temp_data, self.suggested_clusters, self._n_clusters
             ).set_attributes().plot()
             ans = fo.Form.input_bool("Display another model?")
             if not ans:
                 break
-        self._cluster_of_interest = int(input("Which cluster would you like to keep? : "))
+        self._cluster_of_interest = int(
+            input("Which cluster would you like to keep? : ")
+        )
         return self
 
     def cluster(self) -> None:
@@ -106,11 +111,13 @@ class Clustering:
         ].index.values
         self.cutoff_df = self._df.loc[self._df[cons.TRAJECTORY].isin(keep_trajectories)]
         # A minimum trajectory length is necessary for bound lifetime modeling
-        self.min_length = np.min(self.cutoff_df.groupby([cons.TRAJECTORY])[cons.TRAJECTORY].size())
+        self.min_length = np.min(
+            self.cutoff_df.groupby([cons.TRAJECTORY])[cons.TRAJECTORY].size()
+        )
 
 
 class Brightness:
-    """Brightness thresholding"""
+    """Brightness thresholding."""
 
     def __init__(
         self,
@@ -119,12 +126,13 @@ class Brightness:
         method: Optional[str] = None,
         cutoffs: Optional[Tuple[float, float]] = None,
     ) -> None:
-        """Initialize brightness object
+        """Initialize brightness object.
 
         Args:
-            metadata (class object): persistent metadata
-            df (pd.DataFrame): trajectory data
-            method (str, optional): cutoff approach. Defaults to None.
+            metadata: persistent metadata
+            df: trajectory data
+            method: cutoff approach. Defaults to None.
+            cutoffs: high and low brightness values, used for semi_automatic method
         """
         self._frame_cutoff = (
             frame_cutoff  # only used for estimating remaining trajectories after cutoff
@@ -136,8 +144,7 @@ class Brightness:
         self()
 
     def __call__(self) -> None:
-        # TODO fix this because semi auto is handled differently
-        """Calls chosen brightness thresholding method"""
+        """Calls chosen brightness thresholding method."""
         # Since the semi_auto method creates a dictionary as opposed to string
         # it requires special unpacking when called
         logger.info(f"Beginning ---{self._method}--- Brightness Cutoffs")
@@ -146,7 +153,7 @@ class Brightness:
         logger.info(f"Completed ---{self._method}--- Brightness Cutoffs")
 
     def manual(self) -> None:
-        """Manually set min and max brightness values"""
+        """Manually set min and max brightness values."""
         df = self._df
         histogram = di.BrightnessHistogram(df[cons.AVERAGE_BRIGHTNESS].unique())
         histogram.plot()
@@ -162,21 +169,10 @@ class Brightness:
         self.cutoff_df = rm_df
 
     def semi_auto(self) -> None:
-        """
-        Semi-Auto thresholding
+        """Semi-Auto thresholding.
 
-        Set strict brightness cutoffs for all images
-
-        Args:
-            low (float): low brightness cutoff
-            high (float): high brightness cutoff
-
-        Returns:
-            self._brightness_cutoff_df:
-
-        Raises:
-            none
-
+        Uses the same cutoffs, set prior to script runtime, to threshold
+        all movies
         """
         df = self._df
         rm_outliers_df = df[df[cons.AVERAGE_BRIGHTNESS].between(*self._cutoffs)]
@@ -184,7 +180,13 @@ class Brightness:
         self.cutoff_df = rm_df
 
     def auto(self) -> None:
-        """Automatically calculate brightness cutoffs"""
+        """Automatically calculate brightness cutoffs.
+
+        Cutoffs are determined by separating all brightness values into
+        '100' bins. From there, bins are selected sequentially, right
+        and left, from the 'mode' brightness bin until the amount of
+        remaining trajectories is greater than '100'.
+        """
         df = self._df
         min_brightness = df[cons.AVERAGE_BRIGHTNESS].min()
         max_brightness = df[cons.AVERAGE_BRIGHTNESS].max()
@@ -195,12 +197,16 @@ class Brightness:
         while groups <= BINS * 0.2:
             single_traj = df.drop_duplicates(subset=cons.TRAJECTORY, keep="first")
             sdf = (
-                single_traj.groupby(pd.cut(single_traj[cons.AVERAGE_BRIGHTNESS], bins=bin_sdf))
+                single_traj.groupby(
+                    pd.cut(single_traj[cons.AVERAGE_BRIGHTNESS], bins=bin_sdf)
+                )
                 .size()
                 .nlargest(groups)
             )
             cutoff_list = np.array([i.right and i.right for i in sdf.index])
-            low_out, high_out = round(np.min(cutoff_list), 3), round(np.max(cutoff_list), 3)
+            low_out, high_out = round(np.min(cutoff_list), 3), round(
+                np.max(cutoff_list), 3
+            )
             rm_outliers_df = df[df[cons.AVERAGE_BRIGHTNESS].between(low_out, high_out)]
             rm_df = rm_outliers_df.reset_index(drop=True)
             grp_df = (
@@ -219,10 +225,10 @@ class Brightness:
 
 
 class Length:
-    """Remove too short of trajectories"""
+    """Remove too short of trajectories."""
 
     def __init__(self, length: int, df: pd.DataFrame, *, method: str = None) -> None:
-        """Initialize length object
+        """Initialize length object.
 
         Args:
             length (int): metadata class object
@@ -236,14 +242,14 @@ class Length:
         self()
 
     def __call__(self) -> None:
-        """Call length filtering method"""
+        """Call length filtering method."""
         logger.info(f"Beginning ---{self._method}--- Length Cutoffs")
         func = getattr(Length, self._method)
         func(self)
         logger.info(f"Completed ---{self._method}--- Length Cutoffs")
 
     def minimum(self) -> None:
-        """Only use trajectories that are at least -x- frames long"""
+        """Only use trajectories that are at least -x- frames long."""
         self.cutoff_df = (
             self._df.groupby(cons.TRAJECTORY)
             .filter(lambda x: len(x) > self._length)
@@ -252,17 +258,18 @@ class Length:
 
 
 class Diffusion:
-    """Diffusion cutoffs"""
+    """Diffusion cutoffs."""
 
     def __init__(
         self,
         df: pd.DataFrame,
         diffusion_cutoffs: Optional[Tuple[float, float]] = None,
     ) -> None:
-        """Initialize diffusion object
+        """Initialize diffusion object.
 
         Args:
-            diffusion_cutoffs (Optional[Tuple[float, float]]): low/high cutoff value (um^2/sec)
+            diffusion_cutoffs (Optional[Tuple[float, float]]):
+                low/high cutoff value (um^2/sec)
             df (pd.DataFrame): trajectory data
         """
         self._low, self._high = diffusion_cutoffs or (0, float("inf"))
@@ -271,13 +278,13 @@ class Diffusion:
         self()
 
     def __call__(self) -> None:
-        """Call displacement cutoff function"""
+        """Call displacement cutoff function."""
         logger.info("Beginning Diffusion Cutoffs.")
         self.displacement()
         logger.info("Completed Diffusion Cutoffs.")
 
     def displacement(self) -> None:
-        """Use mean square displacement to filter trajectories"""
+        """Use mean square displacement to filter trajectories."""
         df = self._df
         rm_outliers_df = df[df[cons.MSD_W_UNITS].between(self._low, self._high)]
         rm_df = rm_outliers_df.reset_index(drop=True)
