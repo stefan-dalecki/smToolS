@@ -50,14 +50,14 @@ def visualize_table(
 
 
 def main(parser_args: argparse.Namespace):
-    if not parser_args.display or parser_args.save_images:
+    if not parser_args.display and not parser_args.save_images:
         raise ValueError(
             "This script is not worthwhile without specifying whether you want to display or save "
             "images."
         )
     logger.info("Beginning visualization.")
     parsers.ImportParser.validate(parser_args)
-    save_location = parsers.ExportParser.set_save_location(parser_args)
+    save_location = parsers.ExportParser.set_save_location(parser_args) or parser_args.save_location
     microscope = metadata.Microscope(parser_args.pixel_size, parser_args.framestep_size)
     script = metadata.Script(
         parser_args.filetype,
@@ -71,7 +71,7 @@ def main(parser_args: argparse.Namespace):
     if parser_args.file:
         save_name = os.path.splitext(os.path.basename(parser_args.file))[0]
     else:
-        save_name = None
+        save_name = "summary"
     visualize_table(file_info.one_table, script, microscope, save_location, save_name)
     logger.info("Completed visualization.")
 
