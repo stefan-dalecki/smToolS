@@ -161,3 +161,4 @@ cython_debug/
 
 # SummaryFiles
 /sample_data/2023_02_05/gas1/*.xlsx
+/.vscode
