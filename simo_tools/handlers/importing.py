@@ -1,57 +1,151 @@
 import os
+from dataclasses import dataclass
+from typing import Callable, Optional, Self, cast
+
 import pandas as pd
 
-from simo_tools.helpers import constants as cons
+from simo_tools import constants as cons
+from simo_tools import metadata
 
 
-class FileReader:
-    PROCESS_METHOD_MAP: dict[cons.ReadFileTypes, callable] = {
-        ReadFileTypes.CSV: _process_csv
-    }
+@dataclass
+class PathDf:
+    path: str
+    trajectories: metadata.Trajectories
+
+
+def _validate_filetype(filetype: str) -> cons.ReadFileTypes:
+    try:
+        read_filetype = cast(cons.ReadFileTypes, cons.ReadFileTypes[filetype])
+    except KeyError as exc:
+        raise ValueError(
+            f"Detected filetype `{filetype}` is not one of:"
+            f" {' ,'.join(cons.ReadFileTypes.set_of_options())}."
+        ) from exc
+
+    return read_filetype
+
+
+@dataclass
+class DataFiles:
     """
     Loads an optionally (for nd2 files) tracks trajectories.
     """
 
-    def __init__(self, path: str):
+    filepaths: set[str]
+    filetype: cons.ReadFileTypes
+
+    @classmethod
+    def from_path(cls, path: str, filetype: Optional[str] = None) -> Self:
+        """
+        Generates class from file or directory path.
+        """
         if os.path.isdir(path):
-            self.filepaths = set(os.listdir(path))
+            assert filetype, "Filetype must be given if searching through directory."
+            filepaths = cls._detect_matching_files(path, filetype)
         elif os.path.isfile(path):
-            self.filepaths = set(path)
+            filepaths = {path}
+            filetype = _validate_filetype(os.path.splitext(path)[1])
         else:
             raise TypeError(f"Given path: `{path}` is not a file or directory.")
 
-    def pre_process(self, filetype: str):
-        """
-        Processes subset of filepaths that match filetype, using specific filetype
-        method.
+        obj = cls(filepaths=filepaths, filetype=cast(cons.ReadFileTypes, filetype))
+        obj.import_files()
+        return obj
 
-        Args:
-            filetype (str): ex: "csv"
+    @staticmethod
+    def _detect_matching_files(path: str, filetype: str) -> set[str]:
+        read_filetype = _validate_filetype(filetype)
+        filepaths = set()
+        for *_, files in os.walk(path):
+            for name in files:
+                if name.endswith(read_filetype):
+                    filepaths.update(name)
+        return filepaths
 
+    @property
+    def imported_files(self) -> list[PathDf]:
         """
+        Imported raw files.
+        """
+        return self._imported_files
+
+    @imported_files.setter
+    def imported_files(self, imported_files: list[PathDf]):
+        self._imported_files = imported_files
+
+    @property
+    def tables(self):
+        """
+        Imported tables.
+        """
+        return [
+            imported_file.trajectories.table for imported_file in self.imported_files
+        ]
+
+    @staticmethod
+    def _sanitize_column_names(df: pd.DataFrame) -> pd.DataFrame:
+        df.columns = df.columns.str.lower()
+        return df
+
+    @property
+    def _importing_func(self) -> Callable:
+        """
+        Maps filetype (i.e. `csv`) to processing function.
+        """
+        callable_map: dict[str, Callable] = {
+            cons.ReadFileTypes.CSV: self._import_csv,  # particle tracker
+            # cons.ReadFileTypes.XML: self._import_xml,  # mathematic
+            # cons.ReadFileTypes.ND2: self._import_nd2,  # raw nd2 movie
+        }
         try:
-            process_method = cons.ReadFileTypes[filetype]
+            return callable_map[self.filetype]
         except KeyError as exc:
             raise ValueError(
-                f"Given filetype: `{filetype}` must be one of"
+                f"Given filetype: `{self.filetype}` must be one of"
                 f" {', '.join(cons.ReadFileTypes.set_of_options())}."
             ) from exc
 
-    def _process_csv(self):
-        for file in self.filepaths:
-            df = pd.read_csv(file, index_col=[0])
-            df.rename(
-                columns={
-                    cons.PARTICLE: cons.TRAJECTORY,
-                    cons.M2: cons.Cutoffs.BRIGHTNESS,
-                },
-                inplace=True,
-            )
-            track_df = self._sanitize_column_names(track_df)
-            self.pre_processed_files += [(file, track_df)]
+    def import_files(self):
+        """
+        Imports and sanitizes all filepaths.
+        """
+        imported_files = []
+        for filepath in self.filepaths:
+            trajs = metadata.Trajectories.from_df(self._importing_func(filepath))
+            imported_files += [PathDf(path=filepath, trajectories=trajs)]
+        self.imported_files = imported_files
 
-class Trajectory:
-    pass
+    def _import_csv(self, filepath: str) -> pd.DataFrame:
+        df = pd.read_csv(filepath, index_col=[0])
+        df.rename(
+            columns={
+                cons.PARTICLE: cons.TRAJECTORY,
+                cons.M2: cons.Cutoffs.BRIGHTNESS,
+            },
+            inplace=True,
+        )
+        track_df = self._sanitize_column_names(df)
+        return track_df
 
-class TrajectoryTable:
-    def __init__(self, df: pd.DataFrame):
+    # def _process_xml(self, filepath: str) -> PathDf:
+    #     """Read in an xml file generated by trackmate in ImageJ."""
+    #     root = ET.fromstring(open(filepath, encoding="utf-8").read())
+    #     # Find column names based on first entry
+    #     track_df = pd.DataFrame(columns=[cons.TRAJECTORY, *root[0][0].attrib.keys()])
+    #     for i, val in enumerate(root):
+    #         traj_dict = defaultdict(list)
+    #         for j in val:
+    #             for k, v in j.attrib.items():
+    #                 traj_dict[k].append(v)
+    #         # Create and combine row based on dictionary of key value pairs
+    #         traj_df = pd.DataFrame.from_dict(traj_dict).assign(Trajectory=i + 1)
+    #         track_df = pd.concat([track_df, traj_df]).reset_index(drop=True)
+    #     track_df.rename(columns={"t": cons.FRAME}, inplace=True)
+    #     track_df[cons.Coordinates.X], track_df[cons.Coordinates.Y] = track_df[
+    #         cons.Coordinates.X
+    #     ].astype(float), track_df[cons.Coordinates.Y].astype(float)
+    #     track_df[cons.Coordinates.X] *= self._framestep**-1
+    #     track_df[cons.Coordinates.Y] *= self._framestep**-1
+    #     track_df = self._sanitize_column_names(track_df)
+    #     return self._file_and_df(filepath, track_df)

@@ -3,8 +3,6 @@ Various function shortcuts.
 """
 
 import numpy as np
-import pandas as pd
-import smToolS.sm_helpers.constants as cons
 
 # def all_steps(microscope: Microscope, df: pd.DataFrame) -> defaultdict[list]:
 #     """Calculate MSD for 8 step lengths
@@ -146,15 +144,15 @@ def luminescence(I0: float, d: float, z: float) -> float:
     return Iz
 
 
-def trajectory_count(df: pd.DataFrame) -> int:
-    """
-    Counts numbers of trajectories remaining.
+# def trajectory_count(df: pd.DataFrame) -> int:
+#     """
+#     Counts numbers of trajectories remaining.
 
-    Args:
-        df (pd.DataFrame): trajectory data
+#     Args:
+#         df (pd.DataFrame): trajectory data
 
-    Returns:
-        int: number of trajectories
+#     Returns:
+#         int: number of trajectories
 
-    """
-    return df[cons.TRAJECTORY].nunique()
+#     """
+#     return df[cons.TRAJECTORY].nunique()

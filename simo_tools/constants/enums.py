@@ -2,7 +2,7 @@
 Enums used throughout codebase.
 """
 
-from enum import Enum, StrEnum
+from enum import Enum, EnumMeta, StrEnum
 
 __all__ = [
     "Cutoffs",
@@ -13,10 +13,29 @@ __all__ = [
 ]
 
 
-class EnumHelper(Enum):
+class EnumHelperMeta(EnumMeta):
+    """
+    Returns enum values using keys that might be incorrect case.
+    """
+
+    def __getitem__(cls, key: str):
+        """
+        Transform key to uppercase and strip periods before indexing.
+        """
+
+        return super().__getitem__(key.strip(".").upper())
+
+
+class EnumHelper(Enum, metaclass=EnumHelperMeta):
     """
     Utility functions for getting enum class contents.
     """
+
+    def __hash__(self):
+        return hash(self.value)
+
+    def __repr__(self):
+        return str(self.value)
 
     @classmethod
     def list_of_options(cls) -> list[str]:
@@ -34,6 +53,10 @@ class EnumHelper(Enum):
 
 
 class Cutoffs(EnumHelper, StrEnum):
+    """
+    Discriminatory trajectory characteristics.
+    """
+
     BRIGHTNESS = "brightness"
     LENGTH = "length"
     DIFFUSION = "diffusion"
@@ -51,13 +74,24 @@ class CutoffMethods(EnumHelper, StrEnum):
 
 
 class Coordinates(EnumHelper, StrEnum):
+    """
+    Cartesian plane axes.
+    """
+
     X = "x"
     Y = "y"
 
 
 class FileTypeMeta(EnumHelper, StrEnum):
+    """
+    Quality of life parent class.
+    """
+
     @staticmethod
     def sanitize(filetype: str):
+        """
+        Remove `.` and make string lowercase such that `.CSV` == `csv`
+        """
         return filetype.strip(".").lower()
 
     def __contains__(self, filetype: str):
@@ -65,10 +99,13 @@ class FileTypeMeta(EnumHelper, StrEnum):
 
 
 class ReadFileTypes(FileTypeMeta):
+    """
+    Readable filetype extensions.
+    """
+
     CSV = "csv"
-    H5 = "h5"
-    ND2 = "nd2"
     XML = "xml"
+    ND2 = "nd2"
 
 
 class ExportFileTypes(FileTypeMeta):

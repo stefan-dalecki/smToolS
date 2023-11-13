@@ -4,6 +4,7 @@ String constants used throughout codebase.
 
 __all__ = [
     "AVERAGE_BRIGHTNESS",
+    "BASE_TRAJECTORY_TABLE_COLS",
     "BRIGHTNESS",
     "DATE",
     "FILENAME",
@@ -50,3 +51,13 @@ REPLICATE = "replicate"
 SDS = "sds"
 TRAJECTORY = "trajectory"
 TRAJECTORY_W_UNITS = "trajectories (#)"
+X = "x"
+Y = "y"
+
+BASE_TRAJECTORY_TABLE_COLS = [
+    X,
+    Y,
+    TRAJECTORY,
+    FRAME,
+    BRIGHTNESS,
+]
