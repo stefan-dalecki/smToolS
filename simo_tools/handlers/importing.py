@@ -7,6 +7,10 @@ import pandas as pd
 from simo_tools import constants as cons
 from simo_tools import metadata
 
+__all__ = [
+    "DataFiles",
+]
+
 
 @dataclass
 class PathDf:

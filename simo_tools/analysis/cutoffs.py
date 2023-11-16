@@ -3,7 +3,9 @@ Filter trajectory data using brightness, length, and diffusion thresholding.
 """
 
 import logging
-from copy import deepcopy
+from abc import abstractmethod
+from copy import copy
+from dataclasses import dataclass
 from typing import Optional, Self, Tuple
 
 import numpy as np
@@ -16,9 +18,50 @@ from smToolS.analysis_tools import display as di
 from smToolS.analysis_tools import formulas as fo
 from smToolS.sm_helpers import constants as cons
 
+from simo_tools import constants as cons
+from simo_tools import metadata as meta
+
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+@dataclass
+class Cutoff:
+    """
+    Length, Brightness, MSD, etc...
+    """
+
+    high: float
+    low: float
+
+    @property
+    @abstractmethod
+    def param(self):
+        """
+        One of cons.Cutoffs.
+        """
+
+    @abstractmethod
+    def threshold(self, trajs: meta.Trajectories) -> meta.Trajectories:
+        """
+        Return trajectories within high and low cutoffs.
+        """
+
+
+class Brightness(Cutoff):
+    @property
+    def param(self):
+        return cons.Cutoffs.BRIGHTNESS
+
+    def threshold(self, trajs: meta.Trajectories) -> meta.Trajectories:
+        thresholded_trajs = copy(trajs)
+        valid_trajs = [
+            traj
+            for traj in thresholded_trajs.trajectories
+            if self.low <= traj.mean_brightness <= self.high
+        ]
+        return meta.Trajectories(trajectories=valid_trajs)
 
 
 class Clustering:

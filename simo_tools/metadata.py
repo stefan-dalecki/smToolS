@@ -1,13 +1,34 @@
-from copy import copy
 from dataclasses import dataclass
 from itertools import pairwise
-from typing import Any, Self
+from typing import Self
 
 import numpy as np
 import pandas as pd
 
 import simo_tools.constants as cons
 from simo_tools.analysis import formulas
+
+__all__ = [
+    "Meta",
+    "Trajectories",
+]
+
+
+@dataclass(frozen=True)
+class Meta:
+    """
+    Initialize microscope parameters.
+
+    Acts as a singleton throughout the codebase
+    These values are dependent on the qualities of your microscope/movie
+    Args:
+        pixel_size (float): pixel width in cm
+        framestep_size (float): time between frames
+
+    """
+
+    pixel_size: float
+    framestep_size: float
 
 
 @dataclass
@@ -104,7 +125,6 @@ class Trajectories:
     """
 
     COLUMNS = cons.BASE_TRAJECTORY_TABLE_COLS
-    table: pd.DataFrame
     trajectories: list[Trajectory]
 
     @classmethod
@@ -127,38 +147,14 @@ class Trajectories:
         """
         return len(self.trajectories)
 
-
-@dataclass
-class MovieMeta:
-    """
-    Initialize microscope parameters.
-
-    These values are dependent on the qualities of your microscope/movie
-    Args:
-        pixel_size (float): pixel width in cm. Defaults to 0.000024.
-        framestep_size (float): time between frames. Defaults to 0.0217.
-
-    """
-
-    pixel_size: float
-    framestep_size: float
-
-    def modify(self, **kwargs: dict[str, Any]) -> Self:
+    @property
+    def table(self):
         """
-        Temporarily modify metadata.
-
-        Useful if you want to run different sub-routines within your program that
-        change the frame_cutoff or other characteristic
-        Returns:
-            object: modified metadata
-
+        Trajectories as dataframe.
         """
-        temporary_metadata = copy(self)
-        for key, val in kwargs.items():
-            setattr(temporary_metadata, key, val)
-        return temporary_metadata
+        pass
 
 
 @dataclass
-class Movie(MovieMeta):
+class Movie:
     trajectories: Trajectories

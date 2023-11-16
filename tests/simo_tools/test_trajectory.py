@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from simo_tools import trajectory as traj
+from simo_tools import metadata as meta
 
 
 class TestFrame:
@@ -9,11 +9,11 @@ class TestFrame:
     trajectory.Frame.
     """
 
-    test_class = traj.Frame
+    test_class = meta.Frame
 
     def test_from_series(self):
         """
-        traj.Frame.from_series(...)
+        meta.Frame.from_series(...)
         """
         series = pd.Series(data={"x": 1.23, "y": 4.56, "brightness": 789, "frame": 4})
         expected_result = self.test_class(x=1.23, y=4.56, brightness=789, frame=4)
@@ -22,7 +22,7 @@ class TestFrame:
 
     def test_from_dict(self):
         """
-        traj.Frame.from_dict(...)
+        meta.Frame.from_dict(...)
         """
         dictionary = {"x": 1.23, "y": 4.56, "brightness": 789, "frame": 4}
         expected_result = self.test_class(x=1.23, y=4.56, brightness=789, frame=4)
@@ -31,7 +31,7 @@ class TestFrame:
 
 
 class TestTrajectory:
-    test_class = traj.Trajectory
+    test_class = meta.Trajectory
 
     @pytest.fixture(scope="class")
     def traj_df(self) -> pd.DataFrame:
@@ -47,40 +47,40 @@ class TestTrajectory:
         return pd.DataFrame.from_dict(data)
 
     @pytest.fixture(scope="class")
-    def traj_obj(self) -> traj.Trajectory:
+    def traj_obj(self) -> meta.Trajectory:
         """
         Fixture for reuse throughout tests.
         """
         list_frames = [
-            traj.Frame(x=1.123, y=4.658, brightness=7, frame=10),
-            traj.Frame(x=1.143, y=4.148, brightness=8, frame=11),
-            traj.Frame(x=2.496, y=5.466, brightness=9, frame=12),
-            traj.Frame(x=2.472, y=10.806, brightness=10, frame=13),
-            traj.Frame(x=1.621, y=9.901, brightness=11, frame=14),
+            meta.Frame(x=1.123, y=4.658, brightness=7, frame=10),
+            meta.Frame(x=1.143, y=4.148, brightness=8, frame=11),
+            meta.Frame(x=2.496, y=5.466, brightness=9, frame=12),
+            meta.Frame(x=2.472, y=10.806, brightness=10, frame=13),
+            meta.Frame(x=1.621, y=9.901, brightness=11, frame=14),
         ]
         return self.test_class(frames=list_frames)
 
     def test_from_df(self, traj_df: pd.DataFrame):
         """
-        traj.Trajectory.from_df(...)
+        meta.Trajectory.from_df(...)
         """
         actual_result = self.test_class.from_df(traj_df)
         expected_result = self.test_class([
-            traj.Frame(x=1, y=4, brightness=7, frame=10),
-            traj.Frame(x=2, y=5, brightness=8, frame=11),
-            traj.Frame(x=3, y=6, brightness=9, frame=12),
+            meta.Frame(x=1, y=4, brightness=7, frame=10),
+            meta.Frame(x=2, y=5, brightness=8, frame=11),
+            meta.Frame(x=3, y=6, brightness=9, frame=12),
         ])
         assert actual_result == expected_result
 
-    def test_length(self, traj_obj: traj.Trajectory):
+    def test_length(self, traj_obj: meta.Trajectory):
         """
-        traj.Trajectory.length.
+        meta.Trajectory.length.
         """
         assert traj_obj.length == 5
 
-    def test_mean_brightness(self, traj_obj: traj.Trajectory):
+    def test_mean_brightness(self, traj_obj: meta.Trajectory):
         """
-        traj.Trajectory.mean_brightness.
+        meta.Trajectory.mean_brightness.
         """
         assert traj_obj.mean_brightness == 9  # (7+8+9+10+11) / 5
 
@@ -92,17 +92,17 @@ class TestTrajectory:
         ],
     )
     def test_mean_square_displacement(
-        self, traj_obj: traj.Trajectory, remove_first_step: bool, expected_result: float
+        self, traj_obj: meta.Trajectory, remove_first_step: bool, expected_result: float
     ):
         """
-        traj.Trajectory.mean_squared_displacement.
+        meta.Trajectory.mean_squared_displacement.
         """
 
         assert traj_obj.mean_squared_displacement(remove_first_step) == expected_result
 
 
 class TestTrajectories:
-    test_class = traj.Trajectories
+    test_class = meta.Trajectories
 
     @pytest.fixture(scope="class")
     def trajs_dict(self) -> dict[str, list[int | float]]:
@@ -115,7 +115,7 @@ class TestTrajectories:
 
     def test_from_df(self, trajectories_df: pd.DataFrame):
         """
-        traj.Trajectores.from_df.
+        meta.Trajectores.from_df.
         """
         cls_obj = self.test_class.from_df(trajectories_df)
         assert len(cls_obj.trajectories) == 4
