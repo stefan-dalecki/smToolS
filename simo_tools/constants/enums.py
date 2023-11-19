@@ -60,13 +60,16 @@ class Cutoffs(EnumHelper, StrEnum):
     BRIGHTNESS = "brightness"
     LENGTH = "length"
     DIFFUSION = "diffusion"
+    CLUSTER = "cluster"
 
 
 class CutoffMethods(EnumHelper, StrEnum):
+    """
+    Supported cutoff methods.
+    """
+
     MANUAL = "manual"
-    SEMI_AUTO = "semi_auto"
     AUTO = "auto"
-    CLUSTERING = "clustering"
 
     @classmethod
     def default(cls):

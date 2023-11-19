@@ -20,6 +20,7 @@ find = {include = ["simo_tools*"]}
 
 [tool.ruff]
 select = ["A", "C", "E", "F", "I"]
+ignore = ["A001", "A003", "F403"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["A", "C", "E", "F", "I"]

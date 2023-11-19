@@ -2,11 +2,11 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 
 from simo_tools import constants as cons
-from simo_tools.handlers import importing
+from simo_tools.handlers import data
 
 
 class TestFileReader:
-    test_class = importing.DataFiles
+    test_class = data.DataFiles
 
     # @pytest.mark.parametrize(
     #     "path, is_valid",
@@ -17,7 +17,7 @@ class TestFileReader:
     #     ],
     # )
     # def test_from_path(self, path: str, is_valid: bool):
-    #     """importing.FileReader.__init__
+    #     """data.FileReader.__init__
     #     Ensures `TypeError` raised when given invalid path
     #     """
     #     if not is_valid:
@@ -30,7 +30,7 @@ class TestFileReader:
         self, raw_trajectories_csv_path: str, raw_trajectories_csv_df: pd.DataFrame
     ):
         """
-        imporing.FileReader._import_csv.
+        data.FileReader._import_csv.
         """
         test_obj = self.test_class(
             filepaths=set(raw_trajectories_csv_path), filetype=cons.ReadFileTypes.CSV
