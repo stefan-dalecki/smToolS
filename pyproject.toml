@@ -1,7 +1,7 @@
 [project]
 name = "simo_tools"
 requires-python = "~=3.11"
-version="0.0.1"
+version="0.1.0"
 dependencies = [
     "pandas>=2.1",
 ]
@@ -20,7 +20,7 @@ find = {include = ["simo_tools*"]}
 
 [tool.ruff]
 select = ["A", "C", "E", "F", "I"]
-ignore = ["A001", "A003", "F403"]
+ignore = ["F403"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["A", "C", "E", "F", "I"]

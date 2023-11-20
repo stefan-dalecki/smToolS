@@ -3,17 +3,15 @@ from dataclasses import dataclass
 from functools import reduce
 from typing import Optional, Self, Type, cast
 
-import pandas as pd
-
 from simo_tools import constants as cons
 from simo_tools import metadata as meta
 from simo_tools.analysis import cutoffs as cuts
 from simo_tools.handlers import importing
 
 __all__ = [
-    "DataFiles",
+    "FileData",
 ]
-cutoff_typehint = Optional[dict[str, float | cons.CutoffMethods | None]]
+CutoffTypehint = Optional[dict[str, float | cons.CutoffMethods | None]]
 
 
 def _validate_filetype(filetype: str) -> cons.ReadFileTypes:
@@ -32,7 +30,7 @@ def _validate_filetype(filetype: str) -> cons.ReadFileTypes:
 
 
 @dataclass
-class DataFiles:
+class FileData:
     """
     Loads an optionally (for nd2 files) tracks trajectories.
     """
@@ -48,7 +46,9 @@ class DataFiles:
     cutoffs: Optional[Type[cuts.Brightness]] = None
 
     @classmethod
-    def from_path(cls, path: str, filetype: Optional[str] = None) -> Self:
+    def from_path(
+        cls, path: str, filetype: Optional[str | cons.ReadFileTypes] = None
+    ) -> Self:
         """
         Generates class from file or directory path.
         """
@@ -85,14 +85,6 @@ class DataFiles:
     #     Imported tables.
     #     """
     #     return [imported_file.table for imported_file in self.imported_files]
-
-    @staticmethod
-    def _sanitize_column_names(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Puts column names in lowercase.
-        """
-        df.columns = df.columns.str.lower()
-        return df
 
     def set_units(self, pixel_size: float, fps: float) -> Self:
         """

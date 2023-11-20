@@ -11,11 +11,14 @@ tool_path = os.path.realpath(os.path.join(script_path, "..", ".."))
 
 
 @pytest.fixture
-def test_data_loc():
+def test_data_loc() -> str:
+    """
+    Test data directory path.
+    """
     return os.path.join("tests", "simo_tools", "test_tables")
 
 
-class ArtifactError(Exception):
+class ArtifactError(BaseException):
     pass
 
 

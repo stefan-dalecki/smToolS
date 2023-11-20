@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from itertools import pairwise
-from typing import Any, Self
+from typing import Any, Optional, Self, cast
 
 import numpy as np
 import pandas as pd
@@ -10,7 +10,7 @@ from simo_tools.analysis import formulas
 from simo_tools.handlers import importing
 
 __all__ = [
-    "Meta",
+    "MovieParams",
     "Trajectories",
     "Movie",
 ]
@@ -18,10 +18,11 @@ __all__ = [
 COLUMNS = cons.BASE_TRAJECTORY_TABLE_COLS
 
 
-def build_repr(obj: Any, *, ignore_attrs: list[str] = []) -> str:
+def build_repr(obj: Any, *, ignore_attrs: Optional[list[str]] = None) -> str:
     """
     Creates string of class name with all attributes.
     """
+    ignore_attrs = ignore_attrs or []
     attrs = []
     for attr, val in obj.__dict__.items():
         if not attr.startswith("_") and attr not in ignore_attrs:
@@ -30,7 +31,7 @@ def build_repr(obj: Any, *, ignore_attrs: list[str] = []) -> str:
 
 
 @dataclass(frozen=True)
-class Meta:
+class MovieParams:
     """
     Initialize microscope parameters.
 
@@ -68,6 +69,12 @@ class Frame:
         """
         return cls(**dict(series))
 
+    def to_series(self):
+        """
+        Converts object to a pandas Series.
+        """
+        return pd.Series(self.__dict__)
+
 
 @dataclass
 class Trajectory:
@@ -75,17 +82,29 @@ class Trajectory:
     One trajectory with frame data.
     """
 
-    id: int
+    id: int  # noqa: A003
     frames: list[Frame]
+    _length: Optional[int] = None  # set via property retrieval
+    _mean_brightness: Optional[float] = None  # set via property retrieval
+    _msd_w_first: Optional[float] = None  # set via property retrieval
+    _msd_rm_first: Optional[float] = None  # set via property retrieval
 
     @classmethod
     def from_df(cls, df: pd.DataFrame):
         """
         Each row consists of one frame.
         """
-        id = df[cons.TRAJECTORY].unique()[0]
+        id = df[cons.TRAJECTORY].unique()[0]  # noqa: A001
         df.drop(columns=cons.TRAJECTORY, inplace=True)
         return cls(id=id, frames=df.apply(Frame.from_series, axis=1).to_list())
+
+    def to_df(self) -> pd.DataFrame:
+        """
+        Converts object ot a pandas DataFrame.
+        """
+        df = pd.DataFrame([frame.to_series() for frame in self.frames])
+        df["trajectory"] = self.id
+        return df
 
     def __len__(self):
         """
@@ -101,19 +120,26 @@ class Trajectory:
         """
         Number of frames.
         """
-        return len(self)
+        if self._length:
+            return self._length
+        self._length = len(self)
+        return self._length
 
     @property
     def mean_brightness(self):
         """
         Average brightness of all frames.
         """
-        return np.mean([frame.brightness for frame in self.frames])
+        if self._mean_brightness:
+            return self._mean_brightness
+        self._mean_brightness = np.mean([frame.brightness for frame in self.frames])
+        return self._mean_brightness
 
-    @property
     def mean_squared_displacement(self, remove_first_step: bool = True) -> float:
         """
-        Mean Squared Displacement.
+        Mean Squared Displacement (MSD).
+
+        Caches MSD calculation based on whether we keep or remove the first frame step.
 
         Args:
             remove_first_step (bool, optional): First frame is often very noisy.
@@ -123,6 +149,10 @@ class Trajectory:
             float: mean squared displacement in microns squared per second
 
         """
+        target_msd_step = self._check_msd_exists(remove_first_step)
+        if target_msd_step:
+            return target_msd_step
+
         msd_frames = self.frames.copy()
         if remove_first_step:
             msd_frames = msd_frames[1:]
@@ -135,8 +165,41 @@ class Trajectory:
                 cur_frame.x, cur_frame.y, next_frame.x, next_frame.y
             )
             all_displacements += [displacement]
+        msd = cast(float, np.mean(all_displacements))
+        return self._set_and_return_msd_attr(msd, remove_first_step)
 
-        return np.mean(all_displacements)
+    def _check_msd_exists(self, remove_first_step: bool) -> Optional[float]:
+        """
+        Check if we have calculated `_mean_squared_displacement` with or without a first
+        trajectory frame.
+
+        Args:
+            remove_first_step (bool): True if we removed the first frame,
+                                        False if using all frames.
+
+        Returns:
+            Optional[float]: MSD value if it has been calculated for given
+                                `remove_first_step` criterion
+
+        """
+        return self._msd_w_first if remove_first_step else self._msd_rm_first
+
+    def _set_and_return_msd_attr(self, val: float, remove_first_step: bool):
+        """
+        Sets and returns `_msd_rm_first` or `_msd_w_first` based on `remove_first_step`.
+
+        Args:
+            val (float): MSD
+            remove_first_step (bool): True if we removed the first frame,
+                                        False if using all frames.
+        Returns:
+            float: mean squared displacement in microns squared per second
+
+        """
+        MSD_ATTR_MAP = {True: "_msd_rm_first", False: "_msd_w_first"}
+        attr = MSD_ATTR_MAP[remove_first_step]
+        setattr(self, attr, val)
+        return getattr(self, attr)
 
 
 class Trajectories(list[Trajectory]):

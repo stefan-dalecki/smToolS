@@ -5,10 +5,7 @@ Filter trajectory data using brightness, length, and diffusion thresholding.
 import logging
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Self, cast
-
-import numpy as np
-import pandas as pd
+from typing import Optional, cast
 
 # from kneed import KneeLocator
 # from sklearn.cluster import KMeans
@@ -31,8 +28,8 @@ class Cutoff:
     Length, Brightness, MSD, etc...
     """
 
-    min: Optional[float] = None
-    max: Optional[float] = None
+    min: Optional[float] = None  # noqa: A003
+    max: Optional[float] = None  # noqa: A003
     method: cons.CutoffMethods = cons.CutoffMethods.MANUAL
     display: bool = False
     save: bool = False
