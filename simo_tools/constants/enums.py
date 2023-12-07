@@ -5,11 +5,12 @@ Enums used throughout codebase.
 from enum import Enum, EnumMeta, StrEnum
 
 __all__ = [
-    "Cutoffs",
-    "CutoffMethods",
     "Coordinates",
-    "ReadFileTypes",
+    "CutoffMethods",
+    "Cutoffs",
     "ExportFileTypes",
+    "Kinetics",
+    "ReadFileTypes",
 ]
 
 
@@ -122,3 +123,7 @@ class Proteins(EnumHelper, StrEnum):
     PDK = "pdk"
     PKC = "pkc"
     PX = "px"
+
+
+class Kinetics(EnumHelper, StrEnum):
+    BSL = "BSL"

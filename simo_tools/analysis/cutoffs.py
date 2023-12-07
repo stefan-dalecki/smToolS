@@ -2,36 +2,29 @@
 Filter trajectory data using brightness, length, and diffusion thresholding.
 """
 
-import logging
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional, cast
 
-# from kneed import KneeLocator
-# from sklearn.cluster import KMeans
-# from sklearn.metrics import silhouette_score
-# from sklearn.preprocessing import StandardScaler
-# from smToolS.analysis_tools import display as di
-# from smToolS.analysis_tools import formulas as fo
-# from smToolS.sm_helpers import constants as cons
-from simo_tools import constants as cons
-from simo_tools import metadata as meta
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+from simo_tools import constants as cons
+from simo_tools import trajectory as traj
 
 
 @dataclass
-class Cutoff:
+class Cutoff(ABC):
     """
     Length, Brightness, MSD, etc...
     """
 
+    method: cons.CutoffMethods
+    name: str = NotImplemented
     min: Optional[float] = None  # noqa: A003
     max: Optional[float] = None  # noqa: A003
-    method: cons.CutoffMethods = cons.CutoffMethods.MANUAL
-    display: bool = False
+    retain: float = 0.8  # decimal percent
+    _display: bool = False
     save: bool = False
 
     def __post_init__(self):
@@ -41,9 +34,9 @@ class Cutoff:
         These are optional for the 'auto' method.
 
         """
-        if self.method != cons.CutoffMethods.AUTO:
+        if self.method == cons.CutoffMethods.MANUAL:
             assert self.min or self.max, (
-                "If not using auto-thresholding, you must specify a 'ceil' or 'floor'"
+                "If not using auto-thresholding, you must specify a 'min' or 'max'"
                 " cutoff."
             )
 
@@ -51,17 +44,32 @@ class Cutoff:
         self.max = self.max or float("inf")
 
     @property
-    @abstractmethod
-    def param(self):
+    def starting_trajs(self):
         """
-        One of cons.Cutoffs.
+        Trajectories before cutoffs.
         """
+        return self._starting_trajs
 
-    def threshold(self, trajs: meta.Trajectories) -> meta.Trajectories:
+    @starting_trajs.setter
+    def starting_trajs(self, trajs: traj.Trajectories):
+        self._starting_trajs = trajs
+
+    @property
+    def remaining_trajs(self):
+        """
+        Trajectories after cutoffs.
+        """
+        return self._remaining_trajs
+
+    @remaining_trajs.setter
+    def remaining_trajs(self, trajs: traj.Trajectories):
+        self._remaining_trajs = trajs
+
+    def threshold(self, trajs: traj.Trajectories) -> traj.Trajectories:
         """
         Return trajectories within high and low cutoffs.
         """
-
+        self.starting_trajs = trajs
         method_map = {
             cons.CutoffMethods.AUTO: self.auto,
             cons.CutoffMethods.MANUAL: self.manual,
@@ -75,12 +83,14 @@ class Cutoff:
                 f" {' ,'.join(cons.CutoffMethods.set_of_options())}."
             )
 
-        if self.display:
-            self._display(trajs, self.save)
+        self.remaining_trajs = thresholded_trajs
+
+        if self._display:
+            self.display()
 
         return thresholded_trajs
 
-    def _manually_threshold(self, param: cons.Cutoffs, trajs: meta.Trajectories):
+    def _manually_threshold(self, param: cons.Cutoffs, trajs: traj.Trajectories):
         """
         Eliminates trajectories outside of low/high cutoffs.
         """
@@ -96,22 +106,23 @@ class Cutoff:
         valid_trajs = [
             traj for traj in trajs if min_val <= getattr(traj, cutoff_param) <= max_val
         ]
-        return meta.Trajectories(valid_trajs)
+
+        return traj.Trajectories(valid_trajs)
 
     @abstractmethod
-    def auto(self, trajs: meta.Trajectories) -> meta.Trajectories:
+    def auto(self, trajs: traj.Trajectories, retain: float) -> traj.Trajectories:
         """
         Threshold trajectories without being given high or low cutoffs.
         """
 
     @abstractmethod
-    def manual(self, trajs: meta.Trajectories) -> meta.Trajectories:
+    def manual(self, trajs: traj.Trajectories) -> traj.Trajectories:
         """
         Threshold trajectories using given high or low cutoffs.
         """
 
     @abstractmethod
-    def _display(self, trajs: meta.Trajectories, save_figure: bool):
+    def display(self):
         """
         Display eliminated and kept trajectories.
         """
@@ -119,46 +130,82 @@ class Cutoff:
 
 @dataclass
 class Brightness(Cutoff):
-    min_num: Optional[float] = None
+    """
+    Clip by average brightness across all trajectory frames.
+    """
 
-    @property
-    def param(self):
-        return cons.Cutoffs.BRIGHTNESS
+    name = cons.Cutoffs.BRIGHTNESS
 
-    def manual(self, trajs: meta.Trajectories) -> meta.Trajectories:
+    def manual(self, trajs: traj.Trajectories) -> traj.Trajectories:
         return self._manually_threshold(cons.Cutoffs.BRIGHTNESS, trajs)
 
-    def _display(self, trajs: meta.Trajectories):
-        histogram = di.BrightnessHistogram(df[cons.AVERAGE_BRIGHTNESS].unique())
-        histogram.plot()
-        while True:
-            low_out = float(input("Select the low brightness cutoff : "))
-            high_out = float(input("Select the high brightness cutoff : "))
-            rm_outliers_df = df[df[cons.AVERAGE_BRIGHTNESS].between(low_out, high_out)]
-            rm_df = rm_outliers_df.reset_index(drop=True)
-            print(f"Trajectories Remaining : {fo.trajectory_count(rm_df)}")
-            move_on = input("Choose new cutoffs (0) or continue? (1) : ")
-            if move_on == "1":
-                break
-        self.cutoff_df = rm_df
+    def auto(self, trajs: traj.Trajectories, retain: float):
+        original_num_trajs = current_trajs = len(trajs)
+        while (current_trajs / original_num_trajs) > retain:
+            pass
+
+    def display(self):
+        valid = traj.get_trajectories(
+            self.starting_trajs, self.remaining_trajs, method="shared"
+        )
+        invalid = traj.get_trajectories(
+            self.starting_trajs, self.remaining_trajs, method="unique"
+        )
+        valid_data = list(zip(valid.ids, valid.mean_brightness))
+        invalid_data = list(zip(invalid.ids, invalid.mean_brightness))
+        sns.barplot(data=[*valid_data, *invalid_data])
+        plt.show()
+        breakpoint()
+
+    # def _display(self, trajs: traj.Trajectories):
+    #     histogram = di.BrightnessHistogram(df[cons.AVERAGE_BRIGHTNESS].unique())
+    #     histogram.plot()
+    #     while True:
+    #         low_out = float(input("Select the low brightness cutoff : "))
+    #         high_out = float(input("Select the high brightness cutoff : "))
+    #         rm_outliers_df = df[df[cons.AVERAGE_BRIGHTNESS].between(low_out, high_out)]
+    #         rm_df = rm_outliers_df.reset_index(drop=True)
+    #         print(f"Trajectories Remaining : {fo.trajectory_count(rm_df)}")
+    #         move_on = input("Choose new cutoffs (0) or continue? (1) : ")
+    #         if move_on == "1":
+    #             break
+    #     self.cutoff_df = rm_df
 
 
 class Length(Cutoff):
-    @property
-    def param(self):
-        return cons.Cutoffs.LENGTH
+    """
+    Clip by number of frames in trajectory.
+    """
 
-    def manual(self, trajs: meta.Trajectories) -> meta.Trajectories:
+    name = cons.Cutoffs.LENGTH
+
+    def manual(self, trajs: traj.Trajectories) -> traj.Trajectories:
         return self._manually_threshold(cons.Cutoffs.LENGTH, trajs)
+
+    def auto(self, retain: float):
+        pass
 
 
 class Diffusion(Cutoff):
+    """
+    Clip by mean squared displacement.
+    """
+
     @property
     def param(self):
         return cons.Cutoffs.DIFFUSION
 
-    def manual(self, trajs: meta.Trajectories) -> meta.Trajectories:
+    def manual(self, trajs: traj.Trajectories) -> traj.Trajectories:
         return self._manually_threshold(cons.Cutoffs.DIFFUSION, trajs)
+
+
+class Cutoffs(list[Cutoff]):
+    def __init__(self, cutoffs: list[Cutoff]):
+        super().__init__(cutoffs)
+
+    def __getattr__(self, cutoff_name: str):
+        breakpoint()
+        return
 
 
 # class Clustering:

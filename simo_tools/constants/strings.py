@@ -23,6 +23,7 @@ __all__ = [
     "PRE_PROCESSED",
     "PROTEIN",
     "REPLICATE",
+    "SEC",
     "SDS",
     "TRAJECTORY",
     "TRAJECTORY_W_UNITS",
@@ -38,10 +39,10 @@ FRAME = "frame"
 GASKET = "gasket"
 GASKET_ABV = "gas"
 LENGTH_W_UNITS = "length (frames)"
+M2 = "m2"
 MASS = "mass"
 MSD = "msd"
 MSD_W_UNITS = f"{MSD} (\u03bcm\u00b2/sec)"
-M2 = "m2"
 ND_FILTER = "nd_filter"
 ND_FILTER_ABV = "nd"
 PARTICLE = "particle"
@@ -49,6 +50,7 @@ PRE_PROCESSED = "pre_processed"
 PROTEIN = "protein"
 REPLICATE = "replicate"
 SDS = "sds"
+SEC = "sec"
 TRAJECTORY = "trajectory"
 TRAJECTORY_W_UNITS = "trajectories (#)"
 X = "x"

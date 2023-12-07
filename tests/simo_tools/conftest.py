@@ -3,11 +3,11 @@ import os
 import pandas as pd
 import pytest
 
-from simo_tools import metadata as meta
+from simo_tools import trajectory as traj
 
 
 @pytest.fixture
-def trajectories_df(test_data_loc: str):
+def trajectories_df(test_data_loc: str) -> pd.DataFrame:
     """
     Dataframe of Trajectories.
     """
@@ -15,8 +15,8 @@ def trajectories_df(test_data_loc: str):
 
 
 @pytest.fixture
-def trajectories_obj(trajectories_df: pd.DataFrame) -> meta.Trajectories:
+def trajectories_obj(trajectories_df: pd.DataFrame) -> traj.Trajectories:
     """
     Trajectories as a `metadata.Trajectories` object.
     """
-    return meta.Trajectories.from_df(trajectories_df)
+    return traj.Trajectories.from_df(trajectories_df)

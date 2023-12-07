@@ -4,6 +4,8 @@ requires-python = "~=3.11"
 version="0.1.0"
 dependencies = [
     "pandas>=2.1",
+    "scipy>=1.11.4",
+    "seaborn>=0.13.0",
 ]
 
 [project.optional-dependencies]

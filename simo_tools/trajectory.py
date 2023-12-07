@@ -1,50 +1,13 @@
 from dataclasses import dataclass
-from itertools import pairwise
-from typing import Any, Optional, Self, cast
+from typing import Literal, Optional, Self
 
 import numpy as np
 import pandas as pd
 
-import simo_tools.constants as cons
-from simo_tools.analysis import formulas
-from simo_tools.handlers import importing
-
-__all__ = [
-    "MovieParams",
-    "Trajectories",
-    "Movie",
-]
+from simo_tools import constants as cons
+from simo_tools import generic_funcs as gf
 
 COLUMNS = cons.BASE_TRAJECTORY_TABLE_COLS
-
-
-def build_repr(obj: Any, *, ignore_attrs: Optional[list[str]] = None) -> str:
-    """
-    Creates string of class name with all attributes.
-    """
-    ignore_attrs = ignore_attrs or []
-    attrs = []
-    for attr, val in obj.__dict__.items():
-        if not attr.startswith("_") and attr not in ignore_attrs:
-            attrs += [f"{attr}={val}"]
-    return f"{obj.__class__.__name__}({', '.join(attrs)})"
-
-
-@dataclass(frozen=True)
-class MovieParams:
-    """
-    Initialize microscope parameters.
-
-    Acts as a singleton throughout the codebase
-    These values are dependent on the qualities of your microscope/movie
-    Args:
-        pixel_size (float): pixel width in cm
-        framestep_size (float): time between frames
-
-    """
-
-    pixel_size: float
-    framestep_size: float
 
 
 @dataclass
@@ -76,7 +39,7 @@ class Frame:
         return pd.Series(self.__dict__)
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class Trajectory:
     """
     One trajectory with frame data.
@@ -113,7 +76,7 @@ class Trajectory:
         return len(self.frames)
 
     def __repr__(self):
-        return build_repr(self, ignore_attrs=["frames"])
+        return gf.build_repr(self, ignore_attrs=["frames"])
 
     @property
     def length(self):
@@ -231,55 +194,31 @@ class Trajectories(list[Trajectory]):
         """
         return [traj.id for traj in self]
 
+    @property
+    def length(self) -> list[float]:
+        """
+        Number of frames for each trajectory.
+        """
+        return [traj.length for traj in self]
 
-def get_shared_trajectories(
-    trajs_1: Trajectories, trajs_2: Trajectories
+    @property
+    def mean_brightness(self) -> list[float]:
+        """
+        Average brightness of all frames for each trajectory.
+        """
+        return [traj.mean_brightness for traj in self]
+
+
+def get_trajectories(
+    trajs_1: Trajectories, trajs_2: Trajectories, method: Literal["shared", "unique"]
 ) -> Trajectories:
     """
     Compares two `Trajectories` objects and returns only trajectories that are shared
     between the two.
     """
-    return Trajectories([traj for traj in trajs_1 if traj.id in trajs_2.ids])
-
-
-@dataclass
-class Movie:
-    """
-    Single file converted into `Trajectories`.
-    """
-
-    path: str
-    trajectories: Trajectories
-
-    @classmethod
-    def from_path(cls, path: str):
-        """
-        Infers filetype from path and imports table before converting to `Trajectories`.
-        """
-        df = cls.import_file(path)
-        return cls(path=path, trajectories=Trajectories.from_df(df))
-
-    @staticmethod
-    def import_file(path: str) -> pd.DataFrame:
-        """
-        Reads in dataframe from path.
-        """
-        return importing.import_table(path)
-
-    def __repr__(self):
-        return build_repr(self)
-
-    def __len__(self):
-        return len(self.trajectories)
-
-    @property
-    def thresholded_trajectories(self) -> Trajectories:
-        """
-        Trajectories which have passed cuttofs determined through
-        `data.DataFiles.apply_cutoffs.
-        """
-        return self._thresholded_trajectories
-
-    @thresholded_trajectories.setter
-    def thresholded_trajectories(self, thresholded_trajectories: Trajectories):
-        self._thresholded_trajectories = thresholded_trajectories
+    METHOD_OPTIONS = ["shared", "unique"]
+    if method == "shared":
+        return Trajectories([traj for traj in trajs_1 if traj.id in trajs_2.ids])
+    if method == "unique":
+        return Trajectories([traj for traj in trajs_1 if traj.id not in trajs_2.ids])
+    raise ValueError(f"Method must be one of: `{', '.join(METHOD_OPTIONS)}`.")

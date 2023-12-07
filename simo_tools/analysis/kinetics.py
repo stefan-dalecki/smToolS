@@ -4,26 +4,27 @@ Biophysical kinetics.
 
 from collections import defaultdict
 from typing import Self
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, InitVar
+
+from simo_tools import movie as mov
 
 import numpy as np
 import pandas as pd
 from scipy import stats
-from smToolS import metadata
-from smToolS.analysis_tools import formulas as fo
-from smToolS.sm_helpers import constants as cons
+from simo_tools import constants as cons
 
 
-class Kinetic:
+@dataclass
+class Kinetic(ABC):
     """
     Standardized kinetic object.
     """
 
-    def __init__(self) -> None:
-        self.name = None
-        self.unit = None
-        self.x_label = None
-        self.y_label = None
-        self.table = None
+    name: cons.Kinetics
+    unit: str
+    movie: InitVar[mov.Movie]
+    table: str
 
     def __str__(self) -> str:
         """
@@ -60,8 +61,6 @@ class Director:
 
         """
         self._builder.generate()
-        self._builder.add_attributes()
-        self._builder.add_labels()
         self._builder.dataformat()
         return self
 
@@ -94,39 +93,25 @@ class KineticBuilder:
         self.kinetic = Kinetic()
 
 
+@dataclass
 class BSL(KineticBuilder):
     """
     Bound State Lifetime.
-
-    Args:
-        KineticBuilder (class object): inherits from the kinetic builder object
-
     """
 
-    def __init__(self, script: metadata.Script, df: pd.DataFrame) -> None:
-        """
-        Initialize the bound state lifetime object.
+    name = cons.Kinetics.BSL
+    unit = cons.SEC
+    movie: InitVar[mov.Movie]
 
-        Args:
-            metadata (class object): persistent metadata
-            df (pd.DataFrame): trajectory data
 
-        """
-        self.script = script
-        self._df = df
+    def __post_init__(self, _x_label: str, y_label):
 
-    def add_attributes(self) -> None:
-        """
-        Add name and unit.
-        """
-        self.kinetic.name = "BSL"
-        self.kinetic.unit = "sec"
 
     def add_labels(self) -> None:
         """
         Add axis labels for display.
         """
-        self.kinetic.x_label = f"Frames after {self.script.min_length}"
+        self.kinetic.x_label = f"Frames (len): {self.script.min_length}"
         self.kinetic.y_label = "Population Remaining (%)"
 
     def dataformat(self) -> None:
@@ -150,9 +135,9 @@ class BSL(KineticBuilder):
                 / TOT_TRACKS,
                 3,
             )
-            new_row = pd.DataFrame.from_dict({
-                "Minimum Frames": [cutofflen - start], "% Tracks": [tracks]
-            })
+            new_row = pd.DataFrame.from_dict(
+                {"Minimum Frames": [cutofflen - start], "% Tracks": [tracks]}
+            )
             NUMPERTRACKLEN = pd.concat([NUMPERTRACKLEN, new_row])
             # Stop when no tracks are remaining
             if tracks == 0:

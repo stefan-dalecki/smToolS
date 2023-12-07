@@ -1,10 +1,11 @@
 import os
 from dataclasses import dataclass
 from functools import reduce
-from typing import Optional, Self, Type, cast
+from typing import Optional, Self, cast
 
 from simo_tools import constants as cons
-from simo_tools import metadata as meta
+from simo_tools import movie as mov
+from simo_tools import trajectory as traj
 from simo_tools.analysis import cutoffs as cuts
 from simo_tools.handlers import importing
 
@@ -36,14 +37,14 @@ class FileData:
     """
 
     filetype: cons.ReadFileTypes
-    movies: list[meta.Movie]
+    movies: list[mov.Movie]
 
     # changed via `set_units`
     pixel_size: Optional[float] = None
     fps: Optional[float] = None
 
     # set during `apply_cutoffs`
-    cutoffs: Optional[Type[cuts.Brightness]] = None
+    cutoffs: Optional[list[type[cuts.Cutoff]]] = None
 
     @classmethod
     def from_path(
@@ -62,7 +63,10 @@ class FileData:
         else:
             raise TypeError(f"Given path: `{path}` is not a file or directory.")
 
-        movies = [meta.Movie.from_path(filepath) for filepath in filepaths]
+        movies = [
+            mov.Movie.from_path(filepath, self.pixel_size, self.fps)
+            for filepath in filepaths
+        ]
 
         obj = cls(
             filetype=cast(cons.ReadFileTypes, filetype),
@@ -99,16 +103,24 @@ class FileData:
         self.fps = fps
         return self
 
-    def apply_cutoffs(self, cutoffs: list[Type[cuts.Cutoff]]) -> Self:
+    def apply_cutoffs(self, cutoffs: list[type[cuts.Cutoff]]) -> Self:
         """
         Sets cutoff attrs based on given dictionary.
         """
         # this could probably be mapped
+        self.cutoffs = cutoffs
         for movie in self.movies:
             all_valid_trajs = []
             for cutoff in cutoffs:
                 all_valid_trajs += [cutoff.threshold(movie.trajectories)]
 
-            valid_trajs = reduce(meta.get_shared_trajectories, all_valid_trajs)
+            valid_trajs = reduce(traj.get_shared_trajectories, all_valid_trajs)
             movie.thresholded_trajectories = valid_trajs
         return self
+
+    def analyze(self):
+        assert (
+            self.pixel_size and self.fps
+        ), "Both `pixel_size` and `fps` must be set prior to analyzing movies."
+        for movie in self.movies:
+            movie.analyze(pixel_size=self.pixel_size, fps=self.fps)

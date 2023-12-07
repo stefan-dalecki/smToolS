@@ -15,7 +15,9 @@ from simo_tools.handlers import file_data
     ],
 )
 def test__validate_filetype(filetype: str, error: Optional[ValueError]):
-    """file_data._validate_filetype"""
+    """
+    file_data._validate_filetype.
+    """
     if error:
         with pytest.raises(error):
             file_data._validate_filetype(filetype)

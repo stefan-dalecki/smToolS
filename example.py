@@ -6,7 +6,5 @@ data.apply_cutoffs([
     simo.cutoffs.Brightness(min=1.2, max=4.2), simo.cutoffs.Length(min=5)
 ])
 # result = data.analyze()
-# result.save("my_path")
-
-# figures = data.visualize()
-# figures.save("my_path")
+# result.display()
+# result.save(data=True, figures=True)
