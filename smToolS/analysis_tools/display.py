@@ -1,4 +1,5 @@
 """Display figures."""
+
 import abc
 import logging
 import os
@@ -300,7 +301,9 @@ class ScatteredLine:
             save: whether to save figure
             save_location: filepath to save figure
         """
-        logger.info(f"Building ---{__class__.__name__}--- for '{self._model.model_name}'.")
+        logger.info(
+            f"Building ---{__class__.__name__}--- for '{self._model.model_name}'."
+        )
         x_data = self._model.kinetic.table.iloc[:, 0].values.astype(float)
         y_data = self._model.kinetic.table.iloc[:, 1].values.astype(float)
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5), tight_layout=True)
@@ -338,7 +341,8 @@ class ScatteredLine:
                 for i in self._model.pcov[: self._model.components]
             ]
             time_constants = [
-                "{0:.3f}".format(i) for i in self._model.converted_popt[self._model.components :]
+                "{0:.3f}".format(i)
+                for i in self._model.converted_popt[self._model.components :]
             ]
             time_constant_covariances = [
                 np.format_float_scientific(i, precision=1, exp_digits=2)
@@ -405,7 +409,9 @@ class ScatteredLine:
             logger.info(f"Saving ---{__class__.__name__}--- to '{filename}'.")
             plt.savefig(filename)
         if display:
-            logger.info(f"Displaying ---{__class__.__name__}--- for '{self._model.model_name}'.")
+            logger.info(
+                f"Displaying ---{__class__.__name__}--- for '{self._model.model_name}'."
+            )
             plt.show()
         plt.close()
 
@@ -464,8 +470,10 @@ class VisualizationPlots:
             ax2 = axs.twinx()
             ax2.yaxis.set_major_formatter(PercentFormatter(xmax=len(data) / 100))
             if self._save_figures:
-                full_path = f"{self._save_path}_{FUNC_NAME}"
+                appendix = i.split(" ")[0]
+                full_path = f"{self._save_path}_{FUNC_NAME}_{appendix}"
                 logger.info(f"Saving ---{FUNC_NAME}--- to '{full_path}'.")
+                self.df.to_csv(f"{full_path}_raw_data.csv")
                 plt.savefig(full_path)
             if self._display:
                 logger.info(f"Displaying ---{FUNC_NAME}---.")
@@ -486,13 +494,17 @@ class VisualizationPlots:
                 group[self._x_label],
                 group[self._y_label],
                 group[self._z_label],
-                label=f"{group[self._id_col].unique()[0]} : {len(group[cons.TRAJECTORY].unique())}",
+                label=(
+                    f"{group[self._id_col].unique()[0]} :"
+                    f" {len(group[cons.TRAJECTORY].unique())}"
+                ),
             )
         ax.view_init(30, 60)
         plt.legend(title=f"{self._id_col}s", bbox_to_anchor=(1.75, 0.5), loc="right")
         if self._save_figures:
             full_path = f"{self._save_path}_{FUNC_NAME}"
             logger.info(f"Saving ---{FUNC_NAME}--- to '{full_path}'.")
+            self.df.to_csv(f"{full_path}_raw_data.csv")
             plt.savefig(full_path)
         if self._display:
             logger.info(f"Displaying ---{FUNC_NAME}---.")

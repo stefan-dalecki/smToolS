@@ -16,7 +16,9 @@ logger.setLevel(logging.INFO)
 
 
 class VisualizeHandler:
-    def __init__(self, df: pd.DataFrame, script: metadata.Script, microscope: metadata.Microscope):
+    def __init__(
+        self, df: pd.DataFrame, script: metadata.Script, microscope: metadata.Microscope
+    ):
         self.df = df
         self._script = script
         self._microscope = microscope
@@ -27,12 +29,12 @@ class VisualizeHandler:
         self.df[cons.AVERAGE_BRIGHTNESS] = self.df.groupby(cons.TRAJECTORY)[
             cons.BRIGHTNESS
         ].transform(np.mean)
-        self.df[cons.LENGTH_W_UNITS] = self.df.groupby(cons.TRAJECTORY)[cons.TRAJECTORY].transform(
-            "size"
-        )
-        data = self.df.groupby(cons.TRAJECTORY)[[cons.Coordinates.X, cons.Coordinates.Y]].apply(
-            self._microscope.calc_one_step_MSD
-        )
+        self.df[cons.LENGTH_W_UNITS] = self.df.groupby(cons.TRAJECTORY)[
+            cons.TRAJECTORY
+        ].transform("size")
+        data = self.df.groupby(cons.TRAJECTORY)[
+            [cons.Coordinates.X, cons.Coordinates.Y]
+        ].apply(self._microscope.calc_one_step_MSD)
         data = pd.DataFrame(data.to_list(), columns=[cons.SDS, cons.MSD_W_UNITS])
         data.index += 1
         data.reset_index(inplace=True)
